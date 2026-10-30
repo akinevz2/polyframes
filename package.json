@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@bunli/core": "^0.8.2",
-    "herbstutil": "^0.1.2",
+    "herbstutil": "^0.2.0",
     "zod": "^4"
   },
   "devDependencies": {

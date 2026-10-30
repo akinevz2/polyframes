@@ -12,6 +12,12 @@ import { frameSelection } from "./frames";
 import { ui } from "./debug";
 import { selfCommand } from "./self";
 import { labelOffsetPx } from "./barlabel";
+// The shared imperatives now live in herbstutil (v0.2.0 nav module) —
+// behavior-identical ports of the same compositions, single source of
+// truth (herbstutil holds the 5s-timeout/fail-soft herbstclient layer).
+import { floatCenterFrame, minimizeKeepFrame } from "herbstutil/src/commands/nav.js";
+
+export { removeEmptyFrame } from "herbstutil/src/commands/nav.js";
 
 const execFileP = promisify(execFile);
 
@@ -44,25 +50,6 @@ export async function frameClients(frame: string, cls: string): Promise<Client[]
 
 export async function getFocusedWid(): Promise<string> {
     return (await hc.attr("clients.focus.winid")) ?? "";
-}
-
-/**
- * Prune an empty focused frame: if the tag has more than one frame
- * and the FOCUSED frame holds zero clients, remove it. Checks the
- * focused frame (not the window's parent_frame) because minimized
- * windows lose their parent_frame attribute — it reads as missing.
- */
-async function removeEmptyFrame(): Promise<void> {
-    const frameCount = Number(
-        (await hc.attr("tags.focus.frame_count")) ?? "1");
-    if (frameCount <= 1) return;
-    const clients = Number(
-        (await hc.attr("tags.focus.tiling.focused_frame.client_count"))
-        ?? "1");
-    if (clients < 1) {
-        ui("removeEmptyFrame: focused frame empty -> remove");
-        await hc.remove();
-    }
 }
 
 /**
@@ -297,21 +284,16 @@ export async function scrollFocus(wid: string, dir: "up" | "down"): Promise<void
                 ui("scrollFocus: solo %s up (floating) -> maximize", wid);
                 spawnDetached(`${process.env.HOME}/.local/bin/hc_maximize`, [], { toLog: true });
             } else {
-                // Float + center to frame, under a lock so both land in
-                // one motion (no intermediate paint of the uncentered
-                // float). The vacated frame is deliberately LEFT in
-                // place even when this was its only client — hlwm never
-                // auto-removes frames and nothing here removes it; the
-                // window centers within the frame's content geometry
-                // (hc_center's frame mode), not the monitor.
+                // Float + center to frame (herbstutil floatCenterFrame):
+                // under a lock so both land in one motion (no
+                // intermediate paint of the uncentered float). The
+                // vacated frame is deliberately LEFT in place even when
+                // this was its only client — hlwm never auto-removes
+                // frames and nothing here removes it; the window centers
+                // within the frame's content geometry (hc_center's frame
+                // mode), not the monitor.
                 ui("scrollFocus: solo %s up (tiled) -> float + center to frame", wid);
-                await hc.lock();
-                try {
-                    await hc.setAttr(`clients.${wid}.floating`, "true");
-                    await runHelper(`${process.env.HOME}/.local/bin/hc_center`, ["frame"]);
-                } finally {
-                    await hc.unlock();
-                }
+                await floatCenterFrame(wid);
             }
         } else {
             if (tag.endsWith("-max")) {
@@ -324,7 +306,7 @@ export async function scrollFocus(wid: string, dir: "up" | "down"): Promise<void
                 await hc.setAttr(`clients.${wid}.floating`, "false");
             } else {
                 ui("scrollFocus: solo %s down (tiled) -> minimize (keep frame)", wid);
-                await hc.setAttr(`clients.${wid}.minimized`, "true");
+                await minimizeKeepFrame(wid);
             }
         }
         return;
