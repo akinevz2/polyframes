@@ -189,18 +189,27 @@ async function findSwitcherPid(frame: string, cls: string): Promise<number | nul
  * Scroll wheel over a window's label (identified by wid; its
  * frame/class group membership is resolved live at click time).
  *
- * Group with exactly ONE unminimized member (the visible rep):
- *   up   -> if already focused: launch the hidden-windows selector
- *           (rofi_hidden); if unfocused: raise + jumpto (focus it)
- *   down -> if focused: minimize it WITHOUT removing its frame; if
- *           unfocused: raise + jumpto it
+ * ESCALATION LADDER (solo group, window focused) — scroll UP steps up,
+ * scroll DOWN steps down:
+ *   tiled  -> floating -> maximized -> minimized (up)
+ *   minimized <- floating <- maximized <- tiled            (down)
+ *   up:   tiled = float it; floating = hc_maximize; maximized =
+ *         minimize (the max-tag janitor tidies the emptied tag)
+ *   down: maximized = hc_unmaximize; floating = PLAIN unfloat
+ *         (floating off — deliberately NOT the left-click/hc_tile
+ *         re-tile semantics); tiled = minimize (frame kept)
  *
- * Minimized window (solo minflt group):
- *   up   -> jumpto it (unminimize + focus)
- *   down -> launch the tag switcher (rofi_tags)
+ * Unfocused group (any shape):
+ *   up   -> focus its representative first (solo: raise + jumpto;
+ *           multi: focus the frame's selected client) — only scroll
+ *           up focuses
+ *   down -> the tag switcher, WITHOUT focusing anything
  *
- * Multi-member group: cycle focus previous/next within the group,
- * wraparound, including minimized members (the original behaviour).
+ * Minimized solo group:
+ *   up -> jumpto it (unminimize + focus); down -> tag switcher
+ *
+ * Multi-member group, focused: cycle focus previous/next within the
+ * group, wraparound, including minimized members.
  */
 export async function scrollFocus(wid: string, dir: "up" | "down"): Promise<void> {
     ui("scrollFocus: wid=%s dir=%s", wid, dir);
@@ -241,39 +250,64 @@ export async function scrollFocus(wid: string, dir: "up" | "down"): Promise<void
         return;
     }
 
-    // Group with exactly one unminimized member (the visible rep):
-    // up -> focused: hidden switcher; unfocused: raise + jumpto.
-    // down -> focused: minimize (keep frame); unfocused: raise + jumpto.
+    // Group with exactly one unminimized member (the visible rep).
+    // Focused -> the escalation ladder; unfocused -> up: raise+jumpto,
+    // down: tag switcher (no focus).
     if (members.length === 1 && unminimized.length === 1) {
-        const wid = unminimized[0].wid;
-        if (dir === "up") {
-            if (wid === active) {
-                ui("scrollFocus: solo %s up (already focused) -> hidden switcher", wid);
-                await runHelper(SELF, ["hidden"]);
+        const m = unminimized[0];
+        const wid = m.wid;
+        if (wid === active) {
+            // Ladder state: maximized (on a "<...>-max" tag) > floating
+            // > tiled.
+            const tag = (await hc.attr(`clients.${wid}.tag`)) ?? "";
+            if (dir === "up") {
+                if (tag.endsWith("-max")) {
+                    ui("scrollFocus: solo %s up (maximized) -> minimize", wid);
+                    await hc.setAttr(`clients.${wid}.minimized`, "true");
+                } else if (m.flt) {
+                    ui("scrollFocus: solo %s up (floating) -> maximize", wid);
+                    spawnDetached(`${process.env.HOME}/.local/bin/hc_maximize`, [], { toLog: true });
+                } else {
+                    ui("scrollFocus: solo %s up (tiled) -> float", wid);
+                    await hc.setAttr(`clients.${wid}.floating`, "true");
+                }
             } else {
-                ui("scrollFocus: solo %s up (unfocused) -> raise + jumpto", wid);
-                await hc.raise(wid);
-                await hc.jumpto(wid);
+                if (tag.endsWith("-max")) {
+                    ui("scrollFocus: solo %s down (maximized) -> unmaximize", wid);
+                    spawnDetached(`${process.env.HOME}/.local/bin/hc_unmaximize`, [], { toLog: true });
+                } else if (m.flt) {
+                    // PLAIN unfloat — deliberately not the left-click
+                    // hc_tile re-tile semantics.
+                    ui("scrollFocus: solo %s down (floating) -> unfloat", wid);
+                    await hc.setAttr(`clients.${wid}.floating`, "false");
+                } else {
+                    ui("scrollFocus: solo %s down (tiled) -> minimize (keep frame)", wid);
+                    await hc.setAttr(`clients.${wid}.minimized`, "true");
+                }
             }
             return;
         }
-        // down: focused -> minimize (keep frame); unfocused -> raise +
-        // jumpto.
-        if (wid === active) {
-            ui("scrollFocus: solo %s down (focused) -> minimize (keep frame)", wid);
-            await hc.setAttr(`clients.${wid}.minimized`, "true");
+        if (dir === "down") {
+            ui("scrollFocus: solo %s down (unfocused) -> tag switcher (no focus)", wid);
+            spawnDetached(SELF, ["tags"], { toLog: true });
             return;
         }
-        ui("scrollFocus: solo %s down (unfocused) -> raise + jumpto", wid);
+        ui("scrollFocus: solo %s up (unfocused) -> raise + jumpto", wid);
         await hc.raise(wid);
         await hc.jumpto(wid);
         return;
     }
 
-    // Multi-member group. An INACTIVE group first gets FOCUSED (its
-    // representative brought forward); cycling only starts once the
-    // group's frame is focused.
+    // Multi-member group. Scroll DOWN on an unfocused group opens the
+    // tag switcher WITHOUT focusing anything; scroll UP still focuses
+    // the group's representative first (cycling starts only once the
+    // group's frame is focused).
     if (active && !members.some((m) => m.wid === active)) {
+        if (dir === "down") {
+            ui("scrollFocus: inactive multi group -> tag switcher (no focus)");
+            spawnDetached(SELF, ["tags"], { toLog: true });
+            return;
+        }
         const sel = (await frameSelection(row.frame)) ?? "";
         const rep = members.some((m) => m.wid === sel) ? sel : members[0].wid;
         ui("scrollFocus: inactive group -> focus its representative %s first", rep);
