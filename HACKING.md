@@ -1,10 +1,10 @@
 # HACKING — customising/porting polyframes
 
-Guide for adapting polyframes to a different window manager (the code
-targets herbstluftwm 0.9.5, running on polybar), a different bar binary
-(stock and forked **lemonbar** is used as the worked example), or a
-different packaging environment. Read the architecture first: most
-ports are confined to three layers.
+Guide for adapting polyframes to a different window manager (the
+  code targets herbstluftwm 0.9.5, running on polybar), a different
+  bar binary (stock and forked **lemonbar** is used as the worked
+  example), or a different packaging environment. Read the
+  architecture first: most ports are confined to three layers.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -29,49 +29,65 @@ ports are confined to three layers.
 ```
 
 Everything in `groups.ts`, the label-assembly logic inside
-`render.ts`, the menu byte-protocol plumbing, the click state machines
-and the decoration-aware centering math is WM-agnostic — keep those
-and swap the plumbing.
+  `render.ts`, the menu byte-protocol plumbing, the click state
+  machines and the decoration-aware centering math is WM-agnostic —
+  keep those and swap the plumbing.
 
 ## 1. Porting to another window manager
 
 ### 1.1 Where hlwm shows up
 
-| Concern | hlwm surface used | Repo location |
-| --- | --- | --- |
-| binary/CLI wrapper | `herbstclient <cmd>` via execFile | `lib/hc.ts` |
-| whole-object read | `herbstclient attr clients.<wid>.` parsed as JSON by herbstutil's `parseAttr` | `lib/hlwmJson.ts` |
-| cheap scalar reads | `attr <path>` | `lib/hc.ts` |
-| clients per tag/frame | `list_clients --tag=NAME --frame=FLATIDX` | `lib/hc.ts` |
-| ALL clients | `attr clients` → child objects `0x…` | `lib/menus/clients.ts` `allClientWids()` |
-| focused winid | `attr clients.focus.winid` | many call sites |
-| tag list + order | `tag_status` (marker-prefixed names) | `menus/tags.ts`, `menus/clients.ts` |
-| frame tree signature | `dump` hashed, polled 1 s | `lib/bar.ts` |
-| frame/selection math | flat→dotted index + `tags.focus.tiling.root.*.selection` | `lib/frames.ts`, `lib/tile.ts` |
-| one-off spawn rules | `rule once class=X floating=on focus=on switchtag=on` | `lib/spawn.ts` |
-| frame surgery | `split auto`, selection writes down the tree, `bring`/`jumpto` | `lib/tile.ts` |
-| WM hook stream | `herbstclient --idle` (handles `quit_panel`, `reload`) | `lib/bar.ts` |
-| window ops | `jumpto`, `raise`, `close`, `remove`, `lock`/`unlock`, `chain` | `lib/hc.ts` |
-| deco geometry | `clients.<wid>.decoration_geometry` / `.content_geometry` / `floating_geometry` | `lib/center.ts` |
+- **binary/CLI wrapper** — `herbstclient <cmd>` via
+  execFile — `lib/hc.ts`
+- **whole-object read** — `herbstclient attr
+  clients.<wid>.` as JSON via herbstutil's `parseAttr` —
+  `lib/hlwmJson.ts`
+- **cheap scalar reads** — `attr <path>` — `lib/hc.ts`
+- **clients per tag/frame** —
+  `list_clients --tag=NAME --frame=FLATIDX` — `lib/hc.ts`
+- **ALL clients** — `attr clients` children `0x…` —
+  `lib/menus/clients.ts` `allClientWids()`
+- **focused winid** — `attr clients.focus.winid` — many
+  call sites
+- **tag list + order** — `tag_status`
+  (marker-prefixed) — `menus/tags.ts`,
+  `menus/clients.ts`
+- **frame tree signature** — `dump`, hashed, polled
+  1s — `lib/bar.ts`
+- **frame/selection math** — flat→dotted index +
+  `tags.focus.tiling.root.*.selection` —
+  `lib/frames.ts`, `lib/tile.ts`
+- **one-off spawn rules** — `rule once class=X
+  floating=on focus=on switchtag=on` — `lib/spawn.ts`
+- **frame surgery** — `split auto`, selection
+  writes, `bring`/`jumpto` — `lib/tile.ts`
+- **WM hook stream** — `herbstclient --idle`
+  (`quit_panel`, `reload`) — `lib/bar.ts`
+- **window ops** — `jumpto`, `raise`, `close`,
+  `remove`, `lock`/`unlock`, `chain` — `lib/hc.ts`
+- **deco geometry** — `clients.<wid>.
+  decoration_geometry` / `.content_geometry` /
+  `.floating_geometry` — `lib/center.ts`
 
 Everything NOT in this table (grouping, click state machines, menu
-protocols, self-path resolution, centering math) should port with you
-unchanged.
+  protocols, self-path resolution, centering math) should port with
+  you unchanged.
 
 ### 1.2 Suggested approach: a WM adapter facade
 
 Introduce an interface shaped like the current `hc.ts` and swap the
-imports:
+  imports:
 
 ```ts
 // src/lib/wm.ts (sketch)
 export interface WmAdapter {
-    attr(path: string): Promise<string | null>;      // scalar read, null = missing
-    listClients(o: { tag?: string; frame?: string }): Promise<string[]>;
+    attr(path: string): Promise<string | null>; // null = missing
+    listClients(o: { tag?: string; frame?: string }):
+        Promise<string[]>;
     allClientWids(): Promise<string[]>;
-    tagStatus(): Promise<string[]>;                  // ordered tag names
+    tagStatus(): Promise<string[]>;     // ordered tags
     focusedWinid(): Promise<string | null>;
-    treeSignature(): Promise<string | null>;         // hashed for layout poll
+    treeSignature(): Promise<string | null>; // for the poll
     ruleOnce(o: {
         cls?: string; instance?: string; title?: string;
         floating?: "on" | "off"; focus?: boolean;
@@ -85,8 +101,8 @@ export interface WmAdapter {
 ```
 
 Keep the **fail-soft contract**: every ordinary miss resolves to
-`null`/`[]` rather than throwing — that is load-bearing for
-robustness of clicks (a vanished window must never wedge the bar).
+  `null`/`[]` rather than throwing — that is load-bearing for
+  robustness of clicks (a vanished window must never wedge the bar).
 
 ### 1.3 Per-WM notes
 
@@ -98,15 +114,16 @@ robustness of clicks (a vanished window must never wedge the bar).
   `bspc node <id> -t` conventions.
 * frame equivalent: the node itself; flat-index arithmetic in
   `lib/frames.ts` becomes node-ID bookkeeping.
-* one-shot spawn rules: `bspc rule -a <class> -o` one-off rules exist —
-  the `spawn --center` preset maps over cleanly.
+* one-shot spawn rules: `bspc rule -a <class> -o` one-off rules
+  exist — the `spawn --center` preset maps over cleanly.
 * no lock primitive; drop hlwm's `lock/unlock` sequences (or no-op
-  them) — the centering/geometry writes are read-modify-write anyway.
+  them) — the centering/geometry writes are read-modify-write
+  anyway.
 
 #### i3 (i3-msg)
 
-* everything from `i3-msg -t get_tree`: the `"focused": true` node is
-  the active client; the float layer is reachable via the tree's
+* everything from `i3-msg -t get_tree`: the `"focused": true` node
+  is the active client; the float layer is reachable via the tree's
   `floating_nodes` array, which maps naturally onto our
   floating/tiling split.
 * per-window attrs (class/title/WM window id) come from the node's
@@ -127,32 +144,31 @@ robustness of clicks (a vanished window must never wedge the bar).
   minimized, workspace) — that JSON maps almost 1:1 onto what
   herbstutil's `parseAttr` gave us here; niri: `niri msg windows`
   similarly.
-* Wayland compositors need NOWAYLAND_DISPLAY stripping removed
-  (rofi and friends are Wayland-first there; our WSLg hack is a bug
-  on those platforms — see §5).
+* Wayland compositors need NOWAYLAND_DISPLAY stripping removed (rofi
+  and friends are Wayland-first there; our WSLg hack is a bug on
+  those platforms — see §5).
 
 ### 1.4 Porting `hlwmJson`
 
-`lib/hlwmJson.ts` delegates the parsing of **hlwm attr output** to the
-herbstutil npm package (`parseAttr`). That tool is hlwm-specific; on
-another WM the client snapshot in `lib/clients.ts` should call your
-WM's JSON dump (`bspc query -T`, `hyprctl clients -j`,
-`i3-msg -t get_tree`) instead and produce the same
-`{class, minimized, title, tag, floating, …}`-shaped rows. Keep the
-fallback chain to plain per-field reads for robustness either way.
+`lib/hlwmJson.ts` delegates the parsing of **hlwm attr output** to
+  the herbstutil npm package (`parseAttr`). That tool is hlwm-
+  specific; on another WM the client snapshot in `lib/clients.ts`
+  should call your WM's JSON dump (`bspc query -T`, `hyprctl clients
+  -j`, `i3-msg -t get_tree`) instead and produce the same `{class,
+  minimized, title, tag, floating, …}`-shaped rows. Keep the
+  fallback chain to plain per-field reads for robustness either way.
 
 ### 1.5 Testing another WM port
 
-Two suites must stay green unchanged:
-`tests/rofi-row.test.ts` (menu byte protocol, bar-agnostic) and —
-becoming your own bar's pins — `tests/render.test.ts` (bytes of the
-polybar line today). Add
-`tests/<wm>.integration.test.ts` shaped like the hlwm one
-(`tests/integration.test.ts`, gated behind `POLYFRAMES_LIVE_TESTS=1`)
-covering: enumeration order, one-shot spawn flags, and the
-center-no-shrink regression (compare `floating_geometry` before and
-after; the shrunk-window regression earlier in this repo was the
-`m[0]` destructure bug).
+Two suites must stay green unchanged: `tests/rofi-row.test.ts` (menu
+  byte protocol, bar-agnostic) and — becoming your own bar's pins —
+  `tests/render.test.ts` (bytes of the polybar line today). Add
+  `tests/<wm>.integration.test.ts` shaped like the hlwm one
+  (`tests/integration.test.ts`, gated behind
+  `POLYFRAMES_LIVE_TESTS=1`) covering: enumeration order, one-shot
+  spawn flags, and the center-no-shrink regression (compare
+  `floating_geometry` before and after; the shrunk-window regression
+  earlier in this repo was the `m[0]` destructure bug).
 
 ## 2. Porting the BAR: LemonBar example
 
@@ -168,8 +184,8 @@ after; the shrunk-window regression earlier in this repo was the
 
 Stock lemonbar (and close forks):
 
-* actions: `%{A:<cmd>:}text%{A}` — ONE action per clickable area; the
-  fork space (e.g. lemonbar-extended releases and various distro
+* actions: `%{A:<cmd>:}text%{A}` — ONE action per clickable area;
+  the fork space (e.g. lemonbar-extended releases and various distro
   builds) adds `%{A<#>:…}` per-button and extra alignment/offset
   extensions — check your fork's README and map A2..A5 individually
   when present.
@@ -185,7 +201,7 @@ Stock lemonbar (and close forks):
 ### 2.3 Worked example: rendering the same label for both
 
 The label `lib/render.ts` emits today for a single-window group
-(code trimmed for readability):
+  (code trimmed for readability):
 
 ```
 %{A1:{self} toggle-focus --wid 0x280003:}%
@@ -218,47 +234,51 @@ Bar-side glue for lemonbar is one pipe:
 ```
 
 Because a bare invocation prints one line and then keeps it fresh on
-the hook stream, the daemon can feed a permanent lemonbar directly:
+  the hook stream, the daemon can feed a permanent lemonbar
+  directly:
 
 ```sh
 ~/.local/bin/polyframes | lemonbar -p &
 ```
 
 `lib/bar.ts` (`runDaemon`) needs NO changes for this — the daemon
-contract (print a line, then keep it fresh on hooks) is bar-agnostic.
+  contract (print a line, then keep it fresh on hooks) is bar-
+  agnostic.
 
 ### 2.4 Renderer switchboard (sketch)
 
-Keep polybar as the default (the format is pinned by tests) and add a
-backend seam:
+Keep polybar as the default (the format is pinned by tests) and add
+  a backend seam:
 
 ```ts
 // src/lib/render.ts (sketch)
 export type BarBackend = "polybar" | "lemonbar";
-const backend: BarBackend = (process.env.POLYFRAMES_BAR as BarBackend) || "polybar";
+const backend: BarBackend =
+    (process.env.POLYFRAMES_BAR as BarBackend) || "polybar";
 
 const ACTION = (slot: number, cmd: string) => backend === "polybar"
     ? `%{A${slot}:${cmd}:}`
     : slot === 1 ? `%{A:${cmd}:}` : "";
-const ACTION_CLOSE = () => "%{A}";   // same closing verb for both bars
+const ACTION_CLOSE = () => "%{A}"; // same closer for both
 const FG = (c: string | null) => backend === "polybar"
     ? c ? `%{F${c}}` : "%{F-}" : c ? `%{F${c}}` : "";
 ```
 
-…and so on for the alignment head/tail. The `render()` function keeps
-its pure signature; only the escape-tile emission differs. Then thread
-`render(groups, selfCommand())` through a `chooseRenderer()` read and
-add `tests/lemonbar-render.test.ts` pinning the byte output per label
-(the rofi script-mode-deviated protocol incident taught us that these
-formats really do need bytes-level pins).
+…and so on for the alignment head/tail. The `render()` function
+  keeps its pure signature; only the escape-tile emission differs.
+  Then thread `render(groups, selfCommand())` through a
+  `chooseRenderer()` read and add `tests/lemonbar-render.test.ts`
+  pinning the byte output per label (the rofi script-mode-deviated
+  protocol incident taught us that these formats really do need
+  bytes-level pins).
 
 ### 2.5 What lemonbar (stock) can't do
 
 * ONE clickable area per row segment — the five-slot contract
   (click/dismiss/menu/scroll) cannot be fully reproduced; either put
-  the extra actions behind the group `switcher`/`window-menu`, or use
-  an extended fork with per-button `%{A#…}` support and keep the same
-  action CLI.
+  the extra actions behind the group `switcher`/`window-menu`, or
+  use an extended fork with per-button `%{A#…}` support and keep the
+  same action CLI.
 * scroll-up/down as separate buttons — no equivalent; consider
   keybinds firing `polyframes scroll --wid … --dir up|down`.
 * per-label colors are fine, but "reset to theme default" must be
@@ -279,51 +299,54 @@ formats really do need bytes-level pins).
 ## 4. Theming / configuration knobs
 
 `lib/render.ts DEFAULTS` carries every styling knob (colors,
-underline, `separator`, `char_limit`, `max_windows`,
-`forbidden_classes`, `char_case`, `add_spaces`,
-`empty_desktop_message`). A theme is a `settings` override passed to
-`render()` — no RMANY change to the grouping or daemon needed. Bound
-the knobs you care about in your own launch glue (env-override of
-`DEFAULTS` is a fine first step and stays pure).
+  underline, `separator`, `char_limit`, `max_windows`,
+  `forbidden_classes`, `char_case`, `add_spaces`,
+  `empty_desktop_message`). A theme is a `settings` override passed
+  to `render()` — no change to the grouping or daemon needed.
+  Bound the knobs you care about in your own launch glue (env-
+  override of `DEFAULTS` is a fine first step and stays pure).
 
 ## 5. Environment assumptions worth unfixing when you port
 
 * **DISPLAY default** `localhost:0.0` (WSL2 + VcXsrv convention) is
-  hardcoded into `lib/hc.ts`, `spawn.ts` and the menus as the FALLBACK
-  when DISPLAY is unset. On a native X or Wayland session the
-  fallback never triggers, so it is harmless there.
+  hardcoded into `lib/hc.ts`, `spawn.ts` and the menus as the
+  FALLBACK when DISPLAY is unset. On a native X or Wayland session
+  the fallback never triggers, so it is harmless there.
 * **WAYLAND_DISPLAY stripping** happens in every detached spawn
   (`actions.ts`, `spawn.ts`, menus) because WSLg's Wayland socket
-  makes dual-backend apps (rofi, xmessage) abort. On a native Wayland
-  session REMOVE the strip: it would break Wayland-native launchers.
+  makes dual-backend apps (rofi, xmessage) abort. On a native
+  Wayland session REMOVE the strip: it would break Wayland-native
+  launchers.
 * **herbstutil** parses hlwm attr output (see §1.4) — not optional
   unless you replace the reader with your WM's JSON dump.
 * **rofi** script mode drives the menus; dmenu/fzf equivalents can
-  take over by reusing the same row emission (`menus/rofi.ts`) with a
-  different dmenu surface. `fzf` has no clickable protocol — the
+  take over by reusing the same row emission (`menus/rofi.ts`) with
+  a different dmenu surface. `fzf` has no clickable protocol — the
   window-menus keep working (they are the only ones that CARE).
 
 ## 6. Porting checklist
 
 1. Pick your action-set mapping (§2.5) and extend `render.ts` with a
-   backend seam (sketch §2.4); pin byte-level output per backend in a
-   test.
+  backend seam (sketch §2.4); pin byte-level output per backend in a
+  test.
 2. Build the `wm` adapter against the WM's own query CLI: focus-wid,
-   enumeration, fields, tree, one-shot spawn rule equivalents.
-3. Keep the pure suites green (`bun test`) — they do NOT depend on the
-   WM or bar.
+  enumeration, fields, tree, one-shot spawn rule equivalents.
+3. Keep the pure suites green (`bun test`) — they do NOT depend on
+  the WM or bar.
 4. Port `tile.ts` LAST (most hlwm-shaped: frame-tree walking).
-5. Port `spawn.ts` rule semantics (bspwm `-o` maps well; i3 needs the
-   for_window emulation).
+5. Port `spawn.ts` rule semantics (bspwm `-o` maps well; i3 needs
+  the for_window emulation).
 6. Point the menus at your adapter (they mostly consume
-   `listClients`/`attr`).
-7. Wire the daemon to your bar (§3) — either the bar module or a pipe.
+  `listClients`/`attr`).
+7. Wire the daemon to your bar (§3) — either the bar module or a
+  pipe.
 8. Add your WM/Bar integration tests; then iterate on pixel details
-   (truncation, ordering) against `render.test.ts` pins.
+  (truncation, ordering) against `render.test.ts` pins.
 
 ## 7. Origins
 
 polyframes originated as a JS port of shell scripts inside the
-dotfiles repository, then this Bun/Bunli rewrite. The pure modules are
-deliberately kept decoupled so re-implementation for other stacks
-stays cheap; see `README.md` for install and the current surface.
+  dotfiles repository, then this Bun/Bunli rewrite. The pure modules
+  are deliberately kept decoupled so re-implementation for other
+  stacks stays cheap; see `README.md` for install and the current
+  surface.

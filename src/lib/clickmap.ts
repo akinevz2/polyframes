@@ -120,14 +120,30 @@ export function clickMap(): ClickMap {
  * window's frame/class live at click time, so the group membership is
  * always current.
  */
+/**
+ * The left click's handler: the group/single specialisation lives here
+ * (so the registration below stays a uniform one-liner like A2–A5):
+ *   focused multi-window group -> the switcher (pick within the group)
+ *   everything else            -> the focus-first state machine on the
+ *                                 titular window.
+ */
+function switchToggleHandler(g: Group, self: string): string {
+    if (g.count > 1 && g.isActive === 1) {
+        return `${self} switcher ${g.frame} "${g.cls}"`;
+    }
+    return `${self} toggle-focus --wid ${g.rep}`;
+}
+
 export const defaultClickMap: ClickMap = new ClickMap()
-    .associate(lmbClick, "A1", "toggle-focus", (g, self) =>
-        g.count > 1 && g.isActive === 1
-            ? `${self} switcher ${g.frame} "${g.cls}"`
-            : `${self} toggle-focus --wid ${g.rep}`)
-    .associate(rmbClick, "A2", "dismiss", (g, self) => `${self} dismiss --wid ${g.rep}`)
-    .associate(mmbClick, "A3", "menu", (g, self) => `${self} menu --wid ${g.rep}`)
-    .associate(scrollUp, "A4", "scroll", (g, self) => `${self} scroll --wid ${g.rep} --dir up`)
+    // ONE uniform registration per click; the A1 specialisation lives
+    // inside its named callback (switchToggleHandler above).
+    .associate(lmbClick, "A1", "switch-toggle", switchToggleHandler)
+    .associate(rmbClick, "A2", "dismiss", (g, self) =>
+        `${self} dismiss --wid ${g.rep}`)
+    .associate(mmbClick, "A3", "menu", (g, self) =>
+        `${self} menu --wid ${g.rep}`)
+    .associate(scrollUp, "A4", "scroll", (g, self) =>
+        `${self} scroll --wid ${g.rep} --dir up`)
     .associate(scrollDown, "A5", "scroll", (g, self) =>
         `${self} scroll --wid ${g.rep} --dir down`)
     .install();

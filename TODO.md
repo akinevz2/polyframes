@@ -3,7 +3,8 @@
 - [ ] (next session) Record a presentation of the various float
       states and transitions on the live session:
       - Mod-f: float (size preserved, centered, fit) / un-float;
-        single-float policy (guard focuses the floating layer instead
+        single-float policy (guard focuses the floating layer
+                    instead
         of stacking)
       - Mod-x: yank (float + center root, into the float session) /
         defer (float focused → tiling layer) / focus-and-un-float /
