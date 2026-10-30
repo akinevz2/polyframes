@@ -268,15 +268,22 @@ export async function scrollFocus(wid: string, dir: "up" | "down"): Promise<void
                     ui("scrollFocus: solo %s up (floating) -> maximize", wid);
                     spawnDetached(`${process.env.HOME}/.local/bin/hc_maximize`, [], { toLog: true });
                 } else {
-                    // Float + center to frame. The vacated frame is
+                    // Float + center to frame, under a lock so both
+                    // land in one motion (no intermediate paint of the
+                    // uncentered float). The vacated frame is
                     // deliberately LEFT in place even when this was
                     // its only client — hlwm never auto-removes frames
                     // and nothing here removes it; the window centers
                     // within the frame's content geometry (hc_center's
                     // frame mode), not the monitor.
                     ui("scrollFocus: solo %s up (tiled) -> float + center to frame", wid);
-                    await hc.setAttr(`clients.${wid}.floating`, "true");
-                    await runHelper(`${process.env.HOME}/.local/bin/hc_center`, ["frame"]);
+                    await hc.lock();
+                    try {
+                        await hc.setAttr(`clients.${wid}.floating`, "true");
+                        await runHelper(`${process.env.HOME}/.local/bin/hc_center`, ["frame"]);
+                    } finally {
+                        await hc.unlock();
+                    }
                 }
             } else {
                 if (tag.endsWith("-max")) {
@@ -295,8 +302,9 @@ export async function scrollFocus(wid: string, dir: "up" | "down"): Promise<void
             return;
         }
         if (dir === "down") {
-            ui("scrollFocus: solo %s down (unfocused) -> tag switcher (no focus)", wid);
-            spawnDetached(SELF, ["tags"], { toLog: true });
+            ui("scrollFocus: solo %s down (unfocused, visible) -> raise + jumpto", wid);
+            await hc.raise(wid);
+            await hc.jumpto(wid);
             return;
         }
         ui("scrollFocus: solo %s up (unfocused) -> raise + jumpto", wid);
@@ -305,18 +313,25 @@ export async function scrollFocus(wid: string, dir: "up" | "down"): Promise<void
         return;
     }
 
-    // Multi-member group. Scroll DOWN on an unfocused group opens the
-    // tag switcher WITHOUT focusing anything; scroll UP still focuses
-    // the group's representative first (cycling starts only once the
-    // group's frame is focused).
+    // Multi-member group. The styling matrix renders all-minimized
+    // groups grey WITHOUT underline — those are the only groups whose
+    // scroll-down opens the tag switcher; visible (grey-underlined or
+    // plain) groups are FOCUSED on scroll-down in both directions.
     if (active && !members.some((m) => m.wid === active)) {
-        if (dir === "down") {
-            ui("scrollFocus: inactive multi group -> tag switcher (no focus)");
-            spawnDetached(SELF, ["tags"], { toLog: true });
-            return;
-        }
         const sel = (await frameSelection(row.frame)) ?? "";
         const rep = members.some((m) => m.wid === sel) ? sel : members[0].wid;
+        if (members.every((m) => m.min)) {
+            if (dir === "down") {
+                ui("scrollFocus: inactive all-minimized group -> tag switcher (no focus)");
+                spawnDetached(SELF, ["tags"], { toLog: true });
+                return;
+            }
+            ui("scrollFocus: inactive all-minimized group up -> unminimize + focus %s", rep);
+            await hc.setAttr(`clients.${rep}.minimized`, "false");
+            await hc.jumpto(rep);
+            await hc.raise(rep);
+            return;
+        }
         ui("scrollFocus: inactive group -> focus its representative %s first", rep);
         await hc.jumpto(rep);
         await hc.raise(rep);
