@@ -22,7 +22,7 @@ import { runRofiDmenu } from "./rofi";
 
 const SWITCHER_THEME = `${process.env.HOME}/.config/rofi/window-switcher.rasi`;
 
-export async function switcherMenu(args: string[]): Promise<void> {
+export async function switcherMenu(args: string[], xOffsetPx = 0): Promise<void> {
     const [frame, cls = "", selrow = "-1", width = "30", ...wids] = args;
     if (!cls || wids.length === 0) {
         ui("switcher-menu: missing args (frame=%s cls=%s wids=%d)", frame, cls, wids.length);
@@ -64,14 +64,14 @@ export async function switcherMenu(args: string[]): Promise<void> {
     // -format i makes rofi print the selected ROW INDEX (-1 on cancel)
     // instead of the line text — duplicate titles in a group would
     // otherwise all match the first row in a text comparison.
-    const { stdout, status } = runRofiDmenu([
+    const { stdout, status } = await runRofiDmenu([
         "-dmenu", "-i", "-l", String(wids.length),
         "-format", "i",
         "-selected-row", selrow,
         "-theme", SWITCHER_THEME,
         "-theme-str", `window { width: ${width}em; }`,
         "-p", cls,
-    ], menuLines.map((l) => l + "\n").join(""));
+    ], menuLines.map((l) => l + "\n").join(""), xOffsetPx);
 
     if (status !== 0) {
         ui("switcher-menu: rofi failed/cancelled (status %s)", status);

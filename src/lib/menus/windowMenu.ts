@@ -53,7 +53,7 @@ async function resolveVisibleWid(): Promise<string | null> {
     return wids[Number(sel)] ?? null;
 }
 
-export async function windowMenu(args: string[]): Promise<void> {
+export async function windowMenu(args: string[], xOffsetPx = 0): Promise<void> {
     let wid = args[0] ?? "";
     if (wid === "") {
         wid = (await resolveVisibleWid()) ?? "";
@@ -82,7 +82,7 @@ export async function windowMenu(args: string[]): Promise<void> {
     menu.push("Close");
 
     const title = await hc.attr(`clients.${wid}.title`);
-    const { stdout, status } = runRofiDmenu(
+    const { stdout, status } = await runRofiDmenu(
         [
             "-dmenu", "-i", "-no-automatch", "-no-history",
             "-mesg", "Window Operations",
@@ -92,6 +92,7 @@ export async function windowMenu(args: string[]): Promise<void> {
             "-p", title || "window",
         ],
         menu.map((m) => m + "\n").join(""),
+        xOffsetPx,
     );
     if (status !== 0) {
         ui("window-menu: rofi failed/cancelled (status %s)", status);

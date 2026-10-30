@@ -37,6 +37,21 @@ export const DEFAULTS: RenderSettings = {
 };
 
 /**
+ * The label's VISIBLE text (post truncation/casing/spacing) — shared
+ * by render() and the bar-label offset calculator (the menu anchoring
+ * computes pixel positions from the same character counts).
+ */
+export function labelText(g: Group, s: RenderSettings): string {
+    let name = g.title || g.cls;
+    if (s.char_case === "lower") name = name.toLowerCase();
+    else if (s.char_case === "upper") name = name.toUpperCase();
+    if (name.length > s.char_limit) {
+        name = `${name.slice(0, s.char_limit - 1)}…`;
+    }
+    return s.add_spaces ? ` ${name} ` : name;
+}
+
+/**
  * @param groups WM order
  * @param onClick command prefix, e.g. "/usr/local/bin/polyframes"
  * @param settings partial overrides of the defaults
@@ -84,13 +99,7 @@ export function render(
             continue;
         }
 
-        let name = g.title || g.cls;
-        if (s.char_case === "lower") name = name.toLowerCase();
-        else if (s.char_case === "upper") name = name.toUpperCase();
-        if (name.length > s.char_limit) {
-            name = `${name.slice(0, s.char_limit - 1)}…`;
-        }
-        if (s.add_spaces) name = ` ${name} `;
+        const name = labelText(g, s);
 
         // Color by state: focused (gold underline) / floating / visible /
         // minimized (dark gray). A group whose class is not the frame's
@@ -116,7 +125,7 @@ export function render(
             left += "%{+u}%{u" + underline + "}";
             right = "%{-u}" + right;
         }
-        name = `${left}${name}${right}`;
+        const styled = `${left}${name}${right}`;
 
         if (shown !== 0) out += sep;
 
@@ -139,7 +148,7 @@ export function render(
         // click time, so the group membership is always current.
         out += `%{A4:${onClick} scroll --wid ${g.rep} --dir up:}`;
         out += `%{A5:${onClick} scroll --wid ${g.rep} --dir down:}`;
-        out += name;
+        out += styled;
         out += "%{A}%{A}%{A}%{A}%{A}";
 
         shown += 1;

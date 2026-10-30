@@ -9,6 +9,7 @@ import { getClients, type Client } from "./clients";
 import { frameSelection } from "./frames";
 import { ui } from "./debug";
 import { selfCommand } from "./self";
+import { labelOffsetPx } from "./barlabel";
 
 const execFileP = promisify(execFile);
 
@@ -144,7 +145,9 @@ export async function switcher(frame: string, cls: string): Promise<void> {
     // (guaranteed EOF — a never-EOFing stdin pipe from this long-lived
     // process leaves rofi windowless while holding the keyboard grab,
     // freezing the WM), and executes the focus change itself. No output
-    // is expected back.
+    // is expected back. The menu anchors under THIS group's label in
+    // the bar (the clicked label's pixel offset from the bar's center).
+    const xoffset = await labelOffsetPx({ frame, cls });
     spawnDetached(SELF, [
         "switcher-menu",
         frame,
@@ -152,6 +155,7 @@ export async function switcher(frame: string, cls: string): Promise<void> {
         String(selRow),
         String(widthEm),
         ...pairs.map((p) => p.wid),
+        `--xoffset=${xoffset}`,
     ]);
 }
 
@@ -545,5 +549,8 @@ export async function dismiss(wid: string): Promise<void> {
  */
 export async function menu(wid: string): Promise<void> {
     ui("menu: wid=%s", wid);
-    spawnDetached(SELF, ["window-menu", String(wid)]);
+    // The window-menu anchors under the clicked label: the wid's
+    // group's label offset from the bar's center.
+    const xoffset = await labelOffsetPx({ wid });
+    spawnDetached(SELF, ["window-menu", String(wid), `--xoffset=${xoffset}`]);
 }
