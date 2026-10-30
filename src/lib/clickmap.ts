@@ -151,16 +151,16 @@ export const defaultClickMap: ClickMap = new ClickMap()
 /**
  * The EMPTY-DESKTOP map: same fluent pipeline, STATIC formatters (no
  * group to format for — the actions are whole-menu launchers). Per
- * spec: left = tags switcher, right = hidden picker, middle = app
- * launcher, scroll up = launcher, scroll down = hidden picker.
+ * spec: left = hidden picker, right = app launcher, middle = app
+ * launcher, scroll up = tags switcher, scroll down = tags switcher.
  * Five bindings → five openers/closers, uniform with the default map.
  */
 export const emptyDesktopClickMap: ClickMap = new ClickMap()
-    .associate(lmbClick, "A1", "tags", (_g, self) => `${self} tags`)
-    .associate(rmbClick, "A2", "hidden", (_g, self) => `${self} hidden`)
+    .associate(lmbClick, "A1", "hidden", (_g, self) => `${self} hidden`)
+    .associate(rmbClick, "A2", "launch", (_g, self) => `${self} launch`)
     .associate(mmbClick, "A3", "launch", (_g, self) => `${self} launch`)
-    .associate(scrollUp, "A4", "launch", (_g, self) => `${self} launch`)
-    .associate(scrollDown, "A5", "hidden", (_g, self) => `${self} hidden`);
+    .associate(scrollUp, "A4", "tags", (_g, self) => `${self} tags`)
+    .associate(scrollDown, "A5", "tags", (_g, self) => `${self} tags`);
 // NOT installed: render() selects it explicitly for the empty-desktop
 // branch (installing here would steal the global pipeline slot).
 

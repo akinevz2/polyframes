@@ -162,11 +162,11 @@ describe("renderer contract", () => {
     test("empty desktop: the static click map — five uniform actions", () => {
         const bar = render([], ONCLICK);
         const self = "polyframes";
-        // left = tags, right = hidden, middle = launch,
-        // scroll up = launch, scroll down = hidden
+        // left = hidden, right = launch, middle = launch,
+        // scroll up = tags, scroll down = tags
         expect(bar).toBe(
-            `%{A1:${self} tags:}%{A2:${self} hidden:}%{A3:${self} launch:}`
-            + `%{A4:${self} launch:}%{A5:${self} hidden:}`
+            `%{A1:${self} hidden:}%{A2:${self} launch:}%{A3:${self} launch:}`
+            + `%{A4:${self} tags:}%{A5:${self} tags:}`
             + `Desktop%{A}%{A}%{A}%{A}%{A}`,
         );
         // No dots helper names leak into the bar.
