@@ -137,6 +137,14 @@ export async function runRofiDmenu(
         input,
         encoding: "utf8",
     });
+    // rofi's stderr would otherwise vanish (the detached menu's stdio
+    // is /dev/null) — surface theme/dialog errors in the debug log.
+    if (r.stderr?.trim()) {
+        ui("runRofiDmenu: rofi stderr: %s", r.stderr.trim());
+    }
+    if ((r.status ?? 0) !== 0) {
+        ui("runRofiDmenu: rofi failed rc=%s args=%j", r.status, rofiArgs);
+    }
     return { stdout: r.stdout?.toString() ?? "", status: r.status };
 }
 
