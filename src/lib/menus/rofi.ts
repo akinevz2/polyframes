@@ -14,6 +14,7 @@ import { selfCommand } from "../self";
 import { ui } from "../debug";
 import * as hc from "../hc";
 import type { Rect } from "../center";
+import { always } from "../debug";
 
 /** US (0x1f) separates meta fields inside one row; NUL (0x0) separates
  *  the display text from its meta fields; rows are NEWLINE-terminated
@@ -138,12 +139,13 @@ export async function runRofiDmenu(
         encoding: "utf8",
     });
     // rofi's stderr would otherwise vanish (the detached menu's stdio
-    // is /dev/null) — surface theme/dialog errors in the debug log.
+    // is /dev/null) — surface theme/dialog errors in the debug log,
+    // ALWAYS (not layer-gated).
     if (r.stderr?.trim()) {
-        ui("runRofiDmenu: rofi stderr: %s", r.stderr.trim());
+        always(`runRofiDmenu: rofi stderr: ${r.stderr.trim()}`);
     }
     if ((r.status ?? 0) !== 0) {
-        ui("runRofiDmenu: rofi failed rc=%s args=%j", r.status, rofiArgs);
+        always(`runRofiDmenu: rofi failed rc=${r.status} args=${JSON.stringify(rofiArgs)}`);
     }
     return { stdout: r.stdout?.toString() ?? "", status: r.status };
 }

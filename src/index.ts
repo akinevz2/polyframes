@@ -101,5 +101,12 @@ async function main(): Promise<void> {
 
 main().catch((err) => {
     process.stderr.write(`${err && err.stack ? err.stack : err}\n`);
+    // Detached menu processes' stderr is /dev/null — mirror failures
+    // into the debug log so they are never silent.
+    try {
+        // lazy import to avoid a cycle in the module graph
+        const { always } = require("./lib/debug");
+        always(`main: ${err && err.stack ? err.stack : err}`);
+    } catch { /* the log itself failed — nothing more to do */ }
     process.exitCode = 1;
 });

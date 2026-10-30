@@ -22,8 +22,17 @@ import { runRofiDmenu } from "./rofi";
 
 const SWITCHER_THEME = `${process.env.HOME}/.config/rofi/window-switcher.rasi`;
 
-export async function switcherMenu(args: string[], xOffsetPx = 0): Promise<void> {
-    const [frame, cls = "", selrow = "-1", width = "30", ...wids] = args;
+export interface SwitcherMenuArgs {
+    frame: string;
+    cls: string;
+    selrow?: number;
+    width?: number;
+    wids: string[];
+    xOffsetPx?: number;
+}
+
+export async function switcherMenu(args: SwitcherMenuArgs): Promise<void> {
+    const { frame, cls, selrow = -1, width = 30, wids, xOffsetPx = 0 } = args;
     if (!cls || wids.length === 0) {
         ui("switcher-menu: missing args (frame=%s cls=%s wids=%d)", frame, cls, wids.length);
         return;
@@ -67,7 +76,7 @@ export async function switcherMenu(args: string[], xOffsetPx = 0): Promise<void>
     const { stdout, status } = await runRofiDmenu([
         "-dmenu", "-i", "-l", String(wids.length),
         "-format", "i",
-        "-selected-row", selrow,
+        "-selected-row", String(selrow),
         "-theme", SWITCHER_THEME,
         "-theme-str", `window { width: ${width}em; }`,
         "-p", cls,

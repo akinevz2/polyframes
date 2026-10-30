@@ -109,6 +109,13 @@ export const formatLayer = (fmt: string, ...args: unknown[]) => emit("format", f
 /** Alias matching the JS original's module shape. */
 export const format = formatLayer;
 
+/** Un-gated error line — always written to the debug log regardless
+ *  of the layer selection (detached processes' failure paths must
+ *  never be silent). */
+export function always(msg: string): void {
+    logStreamFor().write(`[polyframes:error] ${msg}\n`);
+}
+
 /** Dump a value (Bun deep-inspect semantics, unlimited depth) if
  *  enabled. Written to the debug log file, never to stdout (polybar
  *  reads stdout as the bar line). */

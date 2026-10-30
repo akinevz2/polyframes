@@ -2,7 +2,8 @@
 // click functions + polyframes-toggle). All async; every invocation
 // re-queries fresh WM state.
 
-import { execFile, spawn } from "node:child_process";
+import { execFile, spawn, type StdioOptions } from "node:child_process";
+import { openSync } from "node:fs";
 import { promisify } from "node:util";
 import * as hc from "./hc";
 import { getClients, type Client } from "./clients";
@@ -26,6 +27,7 @@ export const SETTINGS = {
  *  `polyframes window-menu ...`, ...), which also keeps the dislike
  *  double-click detection findable via pgrep. */
 const SELF = selfCommand();
+const LOG_PATH = "/tmp/polyframes.log";
 
 /**
  * The group's members, rebuilt fresh on every invocation — the same
@@ -147,16 +149,19 @@ export async function switcher(frame: string, cls: string): Promise<void> {
     // freezing the WM), and executes the focus change itself. No output
     // is expected back. The menu anchors under THIS group's label in
     // the bar (the clicked label's pixel offset from the bar's center).
+    // ALL args travel as =form options: bunli consumes dash-prefixed
+    // positionals (a hidden group's selrow is -1 → the argv shifted
+    // and the rofi theme got `width: 0x40003em` — the rofi error).
     const xoffset = await labelOffsetPx({ frame, cls });
     spawnDetached(SELF, [
         "switcher-menu",
-        frame,
-        cls,
-        String(selRow),
-        String(widthEm),
-        ...pairs.map((p) => p.wid),
+        `--cls=${cls}`,
+        `--frame=${frame}`,
+        `--selrow=${selRow}`,
+        `--width=${widthEm}`,
+        `--wids=${pairs.map((p) => p.wid).join(",")}`,
         `--xoffset=${xoffset}`,
-    ]);
+    ], { toLog: true });
 }
 
 /**
@@ -231,7 +236,7 @@ export async function scrollFocus(wid: string, dir: "up" | "down"): Promise<void
             await hc.jumpto(wid);
         } else {
             ui("scrollFocus: minimized %s down -> tag switcher", wid);
-            spawnDetached(SELF, ["tags"]);
+            spawnDetached(SELF, ["tags"], { toLog: true });
         }
         return;
     }
@@ -358,14 +363,20 @@ export async function closeWindow(wid: string): Promise<void> {
  *
  * NOTE: intentionally NOT awaitable.
  */
-export function spawnDetached(cmd: string, args: string[]): void {
+export function spawnDetached(cmd: string, args: string[], opts?: { toLog?: boolean }): void {
     // Strip WAYLAND_DISPLAY: WSLg's socket makes dual-backend apps
     // (rofi) pick Wayland and abort with "requires the layer shell
     // protocol" — even when the click arrived outside the shim.
     const { WAYLAND_DISPLAY, ...rest } = process.env;
+    // toLog: route the child's stdout/stderr to the debug log instead
+    // of /dev/null — rofi -dmenu DIES (rc=1, silently) when its stdout
+    // is /dev/null, so every rofi-bearing child must log.
+    const stdio: StdioOptions = opts?.toLog
+        ? ["ignore", openSync(LOG_PATH, "a"), openSync(LOG_PATH, "a")]
+        : "ignore";
     const child = spawn(cmd, args, {
         env: { ...rest, DISPLAY: process.env.DISPLAY || "localhost:0.0" },
-        stdio: "ignore",
+        stdio,
         detached: true,
     });
     child.unref();
@@ -552,5 +563,5 @@ export async function menu(wid: string): Promise<void> {
     // The window-menu anchors under the clicked label: the wid's
     // group's label offset from the bar's center.
     const xoffset = await labelOffsetPx({ wid });
-    spawnDetached(SELF, ["window-menu", String(wid), `--xoffset=${xoffset}`]);
+    spawnDetached(SELF, ["window-menu", String(wid), `--xoffset=${xoffset}`], { toLog: true });
 }
