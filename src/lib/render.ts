@@ -2,6 +2,7 @@
 // Pure function: groups + settings in, bar line out.
 
 import { format as dbg, dir } from "./debug";
+import { clickMap } from "./clickmap";
 import type { Group } from "./groups";
 
 export interface RenderSettings {
@@ -151,31 +152,13 @@ export function render(
 
         if (shown !== 0) out += sep;
 
-        // On-click actions. A1: the group's rep gets focus-first
-        // navigation — an INACTIVE group's left click focuses its
-        // titular (representative) window (jumpto+raise via the
-        // toggle-focus state machine); ONLY an ALREADY-FOCUSED group
-        // opens the switcher (to pick another window within it).
-        // Frame/class are quoted so polybar passes them as separate
-        // argv items.
-        // A2 (right): dismiss (minimize without floating; unminimize +
-        // re-center when already minimized).
-        // A3 (middle): hc_menu rofi menu on the representative window.
-        if (g.count === 1 || g.isActive !== 1) {
-            out += `%{A1:${onClick} toggle-focus --wid ${g.rep}:}`;
-        }
-        if (g.count > 1 && g.isActive === 1) {
-            out += `%{A1:${onClick} switcher ${g.frame} "${g.cls}":}`;
-        }
-        out += `%{A2:${onClick} dismiss --wid ${g.rep}:}`;
-        out += `%{A3:${onClick} menu --wid ${g.rep}:}`;
-        // Scroll actions carry the representative WID, not frame+class —
-        // the handler re-resolves the window's frame/class live at
-        // click time, so the group membership is always current.
-        out += `%{A4:${onClick} scroll --wid ${g.rep} --dir up:}`;
-        out += `%{A5:${onClick} scroll --wid ${g.rep} --dir down:}`;
-        out += styled;
-        out += "%{A}%{A}%{A}%{A}%{A}";
+        // On-click actions: walk the installed ClickMap (click kind ->
+        // slot -> command formatter). It emits one %{A<slot>:<cmd>:}
+        // opener per binding, then the styled label, then one matching
+        // %{A} closer per binding — the default map's five bindings
+        // (A1 left, A2 right, A3 middle, A4/A5 scroll) keep the exact
+        // fragment/closer bytes this module always emitted.
+        out += clickMap().emit(g, onClick, styled);
 
         shown += 1;
     }

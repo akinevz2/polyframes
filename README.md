@@ -100,6 +100,7 @@ src/
 │   ├── frames.ts   flat-index → dotted attr path conversions, selections
 │   ├── groups.ts   pure grouping: minflt|wid / unframed|wid / frame|f|cls
 │   ├── render.ts   pure polybar bar-line formatting
+│   ├── clickmap.ts fluent ClickMap (click→slot→command bindings) render() walks to emit the %{A} action fragments
 │   ├── actions.ts  click handlers (switcher/scroll/toggle*/dismiss/menu/close)
 │   ├── debug.ts    layered verbose logging to /tmp/polyframes.log
 │   └── self.ts     absolute self path for embedded click actions
