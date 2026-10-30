@@ -151,16 +151,20 @@ export function render(
 
         if (shown !== 0) out += sep;
 
-        // On-click actions. A1: lone window -> toggle-focus; group ->
-        // switcher scoped to frame + class. Frame/class are quoted so
-        // polybar passes them as separate argv items.
+        // On-click actions. A1: the group's rep gets focus-first
+        // navigation — an INACTIVE group's left click focuses its
+        // titular (representative) window (jumpto+raise via the
+        // toggle-focus state machine); ONLY an ALREADY-FOCUSED group
+        // opens the switcher (to pick another window within it).
+        // Frame/class are quoted so polybar passes them as separate
+        // argv items.
         // A2 (right): dismiss (minimize without floating; unminimize +
         // re-center when already minimized).
         // A3 (middle): hc_menu rofi menu on the representative window.
-        if (g.count === 1) {
+        if (g.count === 1 || g.isActive !== 1) {
             out += `%{A1:${onClick} toggle-focus --wid ${g.rep}:}`;
         }
-        if (g.count > 1) {
+        if (g.count > 1 && g.isActive === 1) {
             out += `%{A1:${onClick} switcher ${g.frame} "${g.cls}":}`;
         }
         out += `%{A2:${onClick} dismiss --wid ${g.rep}:}`;

@@ -52,13 +52,23 @@ describe("renderer contract", () => {
         expect(bar).not.toContain("index.js");
     });
 
-    test("lone windows get toggle-focus; multi-window groups get the quoted frame+class switcher", async () => {
+    test("click routing: inactive groups focus their titular window; the FOCUSED group opens the switcher", async () => {
+        // No active window: every group is inactive -> A1 = toggle-focus
+        // on the group's REPRESENTATIVE (focus-first navigation).
         const groups = await groupClients(CLIENTS, "", selFn);
         const bar = render(groups, ONCLICK);
 
         expect(bar).toMatch(new RegExp(`%{A1:${ONCLICK} toggle-focus --wid 0xm1:}`));
-        expect(bar).toMatch(new RegExp(`%{A1:${ONCLICK} switcher 0 "code":}`));
-        expect(bar).toMatch(new RegExp(`%{A1:${ONCLICK} switcher 1 "Alacritty":}`));
+        expect(bar).toMatch(new RegExp(`%{A1:${ONCLICK} toggle-focus --wid 0xa2:}`));
+        expect(bar).toMatch(new RegExp(`%{A1:${ONCLICK} toggle-focus --wid 0xb1:}`));
+        expect(bar).not.toContain(`switcher 0`);
+
+        // The focused group (frame 0's code group, rep 0xa2) -> the
+        // switcher; the OTHER groups stay focus-first.
+        const focused = await groupClients(CLIENTS, "0xa2", selFn);
+        const bar2 = render(focused, ONCLICK);
+        expect(bar2).toMatch(new RegExp(`%{A1:${ONCLICK} switcher 0 "code":}`));
+        expect(bar2).toMatch(new RegExp(`%{A1:${ONCLICK} toggle-focus --wid 0xb1:}`));
     });
 
     test("right click dismisses; middle click opens the menu", async () => {
