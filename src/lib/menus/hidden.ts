@@ -2,7 +2,7 @@
 // to it (port of herbst/.local/bin/rofi_hidden).
 //
 // Styled exactly like the window switcher (windows menu): same theme,
-// script-mode rows, icons, MRU ordering and actions, but the list only
+// script-mode rows, MRU ordering and actions, but the list only
 // contains minimized clients (rendered in the theme's urgent/hidden
 // state). Returns non-zero when there are no hidden clients, so callers
 // (the $Mod-g keybind's sh -c chain) can fall back.
@@ -26,9 +26,13 @@ export async function hiddenRows(): Promise<string> {
         if (!f.min) continue;
         i += 1;
         const disp = `${String(i).padStart(2, " ")}. ${f.ttl || f.cls}`;
-        const icon = f.cls.toLowerCase();
-        // minimized: hidden — same urgent row markup as the windows menu
-        out += row(disp, "icon", icon, "urgent", "true", "info", f.wid);
+        // No icon metadata: the theme collapses element-icon to size 0
+        // ("we have no icons"), and rofi still LOADED the class-name
+        // icons when a field was present — tripping the GDK pixbuf
+        // width assertion and a GObject unref assertion on cleanup.
+        // Same urgent row markup as the windows menu (which emits no
+        // icon fields either).
+        out += row(disp, "urgent", "true", "info", f.wid);
     }
     ui("hidden: %d hidden rows", i);
     return out;
@@ -76,7 +80,6 @@ export async function hiddenMenu(): Promise<void> {
             "-modi", modeSpec("hidden", ["hidden"]),
             "-theme", SWITCHER_THEME,
             "-theme-str", "window { width: 35em; }",
-            "-show-icons",
             "-auto-select",
             "-kb-custom-1", "MouseSecondary",
         ], ["hidden"]);
