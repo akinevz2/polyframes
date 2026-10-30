@@ -55,6 +55,24 @@ export async function hiddenMenu(): Promise<void> {
         // the windows switcher (in-process chain now).
         const rows = await hiddenRows();
         if (!rows.trim()) {
+            // No hidden clients at all: if the only unminimized window
+            // is the focused one there is nothing to switch to —
+            // minimize it (hc_minimize semantics) instead of showing
+            // an empty switcher.
+            const fw = (await hc.attr("clients.focus.winid")) ?? "";
+            let other = false;
+            for (const w of await windowOrder()) {
+                const f = await clientFields(w);
+                if (f && !f.min && f.wid !== fw) {
+                    other = true;
+                    break;
+                }
+            }
+            if (!other && fw) {
+                ui("hidden: single window is focused -> minimize");
+                await hc.setAttr(`clients.${fw}.minimized`, "true");
+                return;
+            }
             ui("hidden: no hidden clients -> windows fallback (focused excluded)");
             return windowsMenu([], { excludeFocused: true });
         }

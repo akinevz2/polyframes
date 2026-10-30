@@ -65,7 +65,11 @@ export async function windowsMenu(
     args: string[],
     opts?: { excludeFocused?: boolean },
 ): Promise<void> {
-    const [cls = "", frame = ""] = args;
+    const [cls = "", frame = "", ef = ""] = args;
+    // excludeFocused travels through the mode command: the backend is
+    // a separate process, so an in-process option could not survive
+    // the rofi re-invoke.
+    const excludeFocused = (opts?.excludeFocused ?? false) || ef === "no-focused";
     const rev = ROFI_RETV();
 
     if (rev === undefined) {
@@ -76,7 +80,7 @@ export async function windowsMenu(
         const width = process.env.WIDTH_EM || "40";
         launchRofi([
             "-show", prompt,
-            "-modi", modeSpec(prompt, ["windows", cls, frame]),
+            "-modi", modeSpec(prompt, ["windows", cls, frame, opts?.excludeFocused ? "no-focused" : ""]),
             "-theme", SWITCHER_THEME,
             "-theme-str", `window { width: ${width}em; }`,
             "-auto-select",
@@ -89,7 +93,7 @@ export async function windowsMenu(
             process.stdout.write(menuOpt("use-hot-keys", "true"));
             process.stdout.write(menuOpt("prompt", "windows"));
             process.stdout.write(menuOpt("no-custom", "true"));
-            process.stdout.write(await windowRows(cls, frame));
+            process.stdout.write(await windowRows(cls, frame, excludeFocused));
             break;
         case "1": { // accepted a row: left click state machine
             const info = process.env.ROFI_INFO ?? "";
