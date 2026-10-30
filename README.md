@@ -1,5 +1,7 @@
 # polyframes
 
+[![CI](https://img.shields.io/github/actions/workflow/status/akinevz2/polyframes/ci.yml?branch=main&label=CI&style=flat&pretty=deferred)](https://github.com/akinevz2/polyframes/actions/workflows/ci.yml)
+
 Polybar window-list renderer for herbstluftwm — a bunli CLI written
     in
 TypeScript for Bun, compiled to a standalone native executable with
