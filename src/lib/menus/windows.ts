@@ -65,7 +65,13 @@ export async function windowsMenu(
     args: string[],
     opts?: { excludeFocused?: boolean },
 ): Promise<void> {
-    const [cls = "", frame = "", ef = ""] = args;
+    ui("windowsMenu: args=%j opts=%j", args, opts ?? {});
+    // Mode args use "-" as the UNSET sentinel: bunli DROPS empty-string
+    // positionals, so empty args would shift the whole list left (the
+    // flag landing in the class slot filtered everything).
+    const [clsRaw = "", frameRaw = "", ef = ""] = args;
+    const cls = clsRaw === "-" ? "" : clsRaw;
+    const frame = frameRaw === "-" ? "" : frameRaw;
     // excludeFocused travels through the mode command: the backend is
     // a separate process, so an in-process option could not survive
     // the rofi re-invoke.
@@ -80,7 +86,7 @@ export async function windowsMenu(
         const width = process.env.WIDTH_EM || "40";
         launchRofi([
             "-show", prompt,
-            "-modi", modeSpec(prompt, ["windows", cls, frame, opts?.excludeFocused ? "no-focused" : ""]),
+            "-modi", modeSpec(prompt, ["windows", cls || "-", frame || "-", opts?.excludeFocused ? "no-focused" : "-"]),
             "-theme", SWITCHER_THEME,
             "-theme-str", `window { width: ${width}em; }`,
             "-auto-select",
