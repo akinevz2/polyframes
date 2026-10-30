@@ -14,9 +14,13 @@ export async function printBar(): Promise<void> {
     ui("printBar: start");
     const clients = await getClients();
     const activeWid = (await hc.attr("clients.focus.winid")) ?? "";
-    ui("printBar: activeWid=%s", activeWid || "(none)");
+    // The focused frame's flat index drives the current-frame group
+    // styling (gold underline + yellow text for its multi-window
+    // groups).
+    const currentFrame = (await hc.attr("tags.focus.tiling.focused_frame.index")) ?? "";
+    ui("printBar: activeWid=%s currentFrame=%j", activeWid || "(none)", currentFrame);
     const groups = await groupClients(clients, activeWid);
-    const bar = render(groups, selfCommand());
+    const bar = render(groups, selfCommand(), {}, currentFrame);
     ui("printBar: writing %d-byte bar line", bar.length);
     process.stdout.write(bar + "\n");
 }

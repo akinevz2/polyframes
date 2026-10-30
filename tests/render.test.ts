@@ -80,16 +80,55 @@ describe("renderer contract", () => {
 
     test("the globally focused window's label gets the focused underline", async () => {
         const groups = await groupClients(CLIENTS, "0xb1", selFn); // focus inside frame 1
-        const bar = render(groups, ONCLICK);
+        const bar = render(groups, ONCLICK); // no currentFrame: legacy call
 
         const labels = bar.split("%{F#888888}·%{F-}");
         const alacrittyTiling = labels.find((l) => l.includes("shell"))!;
         const codeLabel = labels.find((l) => l.includes("diff"))!;
-        expect(alacrittyTiling).toContain("%{u#FEEF69}");
-        expect(codeLabel).not.toContain("%{+u}");
-        // The title is the REPRESENTATIVE's title ("diff" = frame 0's
-        // selection overhead editor, not the first row).
-        expect(codeLabel).toContain("diff");
+        expect(alacrittyTiling).toContain("%{u#FEEF69}"); // focused: gold
+        // The code group is a multi-window group: WHITE underline
+        // (group indicator), white text (its windows are visible).
+        expect(codeLabel).toContain("%{+u}");
+        expect(codeLabel).toContain("%{u#ffffff}");
+        expect(codeLabel).toContain("%{F#eeeeee}");
+    });
+
+    test("the CURRENT FRAME's multi-window group: gold underline + yellow text", async () => {
+        const groups = await groupClients(CLIENTS, "", selFn); // focus elsewhere (a float)
+        const bar = render(groups, ONCLICK, {}, "0"); // current frame = 0
+        const codeLabel = bar.split("%{F#888888}·%{F-}").find((l) => l.includes("diff"))!;
+        expect(codeLabel).toContain("%{u#FEEF69}");   // gold underline
+        expect(codeLabel).toContain("%{F#FEEF69}");   // yellow text
+        expect(codeLabel).not.toContain("%{F#eeeeee} ");
+    });
+
+    test("a NOT-VISIBLE multi-window group: grey text + white underline", async () => {
+        // Frame 0's Alacritty group when frame 0's selection belongs to
+        // another class: the group is grouped-but-hidden.
+        const mixed: Client[] = [
+            { wid: "0xa1", cls: "code", min: false, ttl: "editor", flt: false, frame: "0" },
+            { wid: "0xa2", cls: "code", min: false, ttl: "diff", flt: false, frame: "0" },
+            { wid: "0xc1", cls: "Acme", min: false, ttl: "acme", flt: false, frame: "0" },
+        ];
+        const groups = await groupClients(mixed, "", async () => "0xc1"); // Acme owns the selection
+        const bar = render(groups, ONCLICK, {}, "0");
+        const codeLabel = bar.split("%{F#888888}·%{F-}").find((l) => l.includes("editor"))!;
+        // The CURRENT FRAME's multi-window group: gold + yellow even
+        // when its windows aren't the frame's visible ones (the frame
+        // indicator dominates — case 2 before any visibility dimming).
+        expect(codeLabel).toContain("%{F#FEEF69}");
+        expect(codeLabel).toContain("%{u#FEEF69}");
+        expect(codeLabel).not.toContain("%{u#ffffff}");
+    });
+
+    test("a solo VISIBLE (floating) window: white text, no underline", async () => {
+        const solo: Client[] = [
+            { wid: "0xa1", cls: "pavucontrol", min: false, ttl: "volume", flt: true, frame: "-1" },
+        ];
+        const groups = await groupClients(solo, "", async () => null);
+        const bar = render(groups, ONCLICK, {}, "0");
+        expect(bar).toContain("%{F#eeeeee}");
+        expect(bar).not.toContain("%{+u}");
     });
 
     test("minimized labels render dimmed, without underline", async () => {

@@ -9,7 +9,12 @@ export interface RenderSettings {
     focused_text_color: string;
     floating_text_color: string;
     hidden_text_color: string;
+    /** the focused window's group: gold underline + this (white) */
     focused_underline: string;
+    /** the CURRENT FRAME's multi-window group: gold underline + this (yellow) */
+    current_frame_text_color: string;
+    /** any OTHER multi-window group: this underline, grey/white text */
+    group_underline: string;
     floating_underline: string;
     separator: string;
     forbidden_classes: string;
@@ -26,6 +31,8 @@ export const DEFAULTS: RenderSettings = {
     floating_text_color: "#eeeeee",
     hidden_text_color: "#888888",
     focused_underline: "#FEEF69",
+    current_frame_text_color: "#FEEF69",
+    group_underline: "#ffffff",
     floating_underline: "",
     separator: "·",
     forbidden_classes: "Polybar Conky Gmrun",
@@ -55,12 +62,15 @@ export function labelText(g: Group, s: RenderSettings): string {
  * @param groups WM order
  * @param onClick command prefix, e.g. "/usr/local/bin/polyframes"
  * @param settings partial overrides of the defaults
+ * @param currentFrame the focused frame's flat index ("" when none) —
+ *   drives the current-frame group styling; omit for the legacy look
  * @returns the polybar module output line (no trailing \n)
  */
 export function render(
     groups: Group[],
     onClick: string,
     settings: Partial<RenderSettings> = {},
+    currentFrame?: string,
 ): string {
     const s = { ...DEFAULTS, ...settings };
     dbg("render: %d groups in, settings=%j", groups.length, s);
@@ -101,24 +111,36 @@ export function render(
 
         const name = labelText(g, s);
 
-        // Color by state: focused (gold underline) / floating / visible /
-        // minimized (dark gray). A group whose class is not the frame's
-        // selected client's class is not shown on screen — dim it like
-        // minimized windows. This is per-frame (via isVisible), so it
-        // stays correct when focus moves between frames.
+        // Styling decision matrix (per the label spec):
+        //   1. minimized                     -> grey, no underline
+        //   2. the group holds the FOCUSED window
+        //                                    -> gold underline + white
+        //   3. CURRENT FRAME's group, >1 window
+        //                                    -> gold underline + yellow
+        //   4. other multi-window group      -> white underline + grey
+        //                                       (not visible) or white
+        //   5. solo visible                  -> white, no underline
+        //   6. solo not visible (mixed frame) -> grey, no underline
         let color = s.visible_text_color;
         let underline = "";
-        if (g.isActive === 1 && g.state !== "min") {
+        if (g.state === "min") {
+            color = s.hidden_text_color;
+        } else if (g.isActive === 1) {
             color = s.focused_text_color;
+            underline = s.focused_underline;
+        } else if (currentFrame !== undefined && g.frame === currentFrame && g.count > 1) {
+            color = s.current_frame_text_color;
             underline = s.focused_underline;
         } else if (g.state === "flt") {
             color = s.floating_text_color;
             underline = s.floating_underline;
-        } else if (g.state === "min") {
-            color = s.hidden_text_color;
         } else if (g.state === "tiling" && !g.isVisible) {
             color = s.hidden_text_color;
+            if (g.count > 1) underline = s.group_underline;
+        } else if (g.count > 1) {
+            underline = s.group_underline;
         }
+        // (solo visible falls through: white text, no underline)
         let left = `%{F${color}}`;
         let right = "%{F-}";
         if (underline) {
