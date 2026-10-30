@@ -14,8 +14,9 @@
   },
   "dependencies": {
     "@bunli/core": "^0.8.2",
-    "herbstutil": "^0.2.0",
-    "zod": "^4"
+    "herbstutil": "file:../herbstutil",
+    "zod": "^4",
+    "herbctl": "file:../herbctl"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -28,5 +29,8 @@
   "trustedDependencies": [
     "bun",
     "herbstutil"
+  ],
+  "workspaces": [
+    "../*"
   ]
 }

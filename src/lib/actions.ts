@@ -15,9 +15,9 @@ import { labelOffsetPx } from "./barlabel";
 // The shared imperatives now live in herbstutil (v0.2.0 nav module) —
 // behavior-identical ports of the same compositions, single source of
 // truth (herbstutil holds the 5s-timeout/fail-soft herbstclient layer).
-import { floatCenterFrame, minimizeKeepFrame } from "herbstutil/src/commands/nav.js";
+import { floatCenterFrame, minimizeKeepFrame } from "herbctl/src/lib/imperatives.js";
 
-export { removeEmptyFrame } from "herbstutil/src/commands/nav.js";
+export { removeEmptyFrame } from "herbctl/src/lib/imperatives.js";
 
 const execFileP = promisify(execFile);
 
