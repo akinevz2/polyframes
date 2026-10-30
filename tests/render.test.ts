@@ -113,12 +113,12 @@ describe("renderer contract", () => {
         const groups = await groupClients(mixed, "", async () => "0xc1"); // Acme owns the selection
         const bar = render(groups, ONCLICK, {}, "0");
         const codeLabel = bar.split("%{F#888888}·%{F-}").find((l) => l.includes("editor"))!;
-        // The CURRENT FRAME's multi-window group: gold + yellow even
-        // when its windows aren't the frame's visible ones (the frame
-        // indicator dominates — case 2 before any visibility dimming).
-        expect(codeLabel).toContain("%{F#FEEF69}");
-        expect(codeLabel).toContain("%{u#FEEF69}");
-        expect(codeLabel).not.toContain("%{u#ffffff}");
+        // NOT-VISIBLE groups render grey with the white group
+        // underline — the visibility dim outranks the current-frame
+        // gold/yellow styling (user re-spec).
+        expect(codeLabel).toContain("%{F#888888}");
+        expect(codeLabel).toContain("%{u#ffffff}");
+        expect(codeLabel).not.toContain("%{u#FEEF69}");
     });
 
     test("a solo VISIBLE (floating) window: white text, no underline", async () => {

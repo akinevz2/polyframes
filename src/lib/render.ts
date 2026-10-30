@@ -115,12 +115,12 @@ export function render(
         //   1. minimized                     -> grey, no underline
         //   2. the group holds the FOCUSED window
         //                                    -> gold underline + white
-        //   3. CURRENT FRAME's group, >1 window
+        //   3. not visible (mixed frame)     -> grey (+ white underline
+        //                                       when grouped)
+        //   4. CURRENT FRAME's group, >1 window (visible)
         //                                    -> gold underline + yellow
-        //   4. other multi-window group      -> white underline + grey
-        //                                       (not visible) or white
-        //   5. solo visible                  -> white, no underline
-        //   6. solo not visible (mixed frame) -> grey, no underline
+        //   5. other multi-window group      -> white underline + white
+        //   6. solo visible                  -> white, no underline
         let color = s.visible_text_color;
         let underline = "";
         if (g.state === "min") {
@@ -128,15 +128,15 @@ export function render(
         } else if (g.isActive === 1) {
             color = s.focused_text_color;
             underline = s.focused_underline;
+        } else if (g.state === "tiling" && !g.isVisible) {
+            color = s.hidden_text_color;
+            if (g.count > 1) underline = s.group_underline;
         } else if (currentFrame !== undefined && g.frame === currentFrame && g.count > 1) {
             color = s.current_frame_text_color;
             underline = s.focused_underline;
         } else if (g.state === "flt") {
             color = s.floating_text_color;
             underline = s.floating_underline;
-        } else if (g.state === "tiling" && !g.isVisible) {
-            color = s.hidden_text_color;
-            if (g.count > 1) underline = s.group_underline;
         } else if (g.count > 1) {
             underline = s.group_underline;
         }
