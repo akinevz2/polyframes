@@ -22,37 +22,49 @@ import { clientFields, windowOrder } from "./clients";
 
 const SWITCHER_THEME = `${process.env.HOME}/.config/rofi/window-switcher.rasi`;
 
-async function windowRows(filterCls: string, filterFrame: string): Promise<string> {
+async function windowRows(
+    filterCls: string,
+    filterFrame: string,
+    excludeFocused = false,
+): Promise<string> {
     // MRU first (X stacking top-down). Frame filtering keeps the
     // switcher scoped to one frame + class group.
     const currentTag = await hc.attr("tags.focus.name");
     if (currentTag === null) return "";
     let out = "";
+    const focusedWid = excludeFocused
+        ? ((await hc.attr("clients.focus.winid")) ?? "")
+        : "";
     for (const wid of await windowOrder()) {
         const f = await clientFields(wid);
         if (!f) continue;
+        if (focusedWid && f.wid === focusedWid) continue;
         if (filterCls && f.cls !== filterCls) continue;
         // frame filter: normalize hlwm's empty root index to 0
         let frame = (await hc.attr(`clients.${f.wid}.parent_frame.index`)) ?? "";
         if (frame === "") frame = "0";
         if (filterFrame && frame !== filterFrame) continue;
         const disp = f.ttl || f.cls;
-        const icon = f.cls.toLowerCase();
+        // No icon fields: rofi 2.0 loads row icons even with
+        // element-icon size 0, tripping the GDK pixbuf width assertion.
         if (f.min) {
             // minimized: hidden
-            out += row(disp, "icon", icon, "urgent", "true", "info", f.wid);
+            out += row(disp, "urgent", "true", "info", f.wid);
         } else if (f.tg !== currentTag) {
             // unminimized on another tag
-            out += row(disp, "icon", icon, "active", "true", "info", f.wid);
+            out += row(disp, "active", "true", "info", f.wid);
         } else {
             // visible on the focused tag
-            out += row(disp, "icon", icon, "info", f.wid);
+            out += row(disp, "info", f.wid);
         }
     }
     return out;
 }
 
-export async function windowsMenu(args: string[]): Promise<void> {
+export async function windowsMenu(
+    args: string[],
+    opts?: { excludeFocused?: boolean },
+): Promise<void> {
     const [cls = "", frame = ""] = args;
     const rev = ROFI_RETV();
 
@@ -67,7 +79,6 @@ export async function windowsMenu(args: string[]): Promise<void> {
             "-modi", modeSpec(prompt, ["windows", cls, frame]),
             "-theme", SWITCHER_THEME,
             "-theme-str", `window { width: ${width}em; }`,
-            "-show-icons",
             "-auto-select",
             "-kb-custom-1", "MouseSecondary",
         ], ["windows", cls, frame]);

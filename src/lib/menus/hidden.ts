@@ -55,8 +55,8 @@ export async function hiddenMenu(): Promise<void> {
         // the windows switcher (in-process chain now).
         const rows = await hiddenRows();
         if (!rows.trim()) {
-            ui("hidden: no hidden clients -> windows fallback");
-            return windowsMenu([]);
+            ui("hidden: no hidden clients -> windows fallback (focused excluded)");
+            return windowsMenu([], { excludeFocused: true });
         }
         // Exactly one hidden window left: no menu needed, just reveal it.
         const rowCount = rows.split("\x00").filter(Boolean).length;
