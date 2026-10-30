@@ -268,8 +268,15 @@ export async function scrollFocus(wid: string, dir: "up" | "down"): Promise<void
                     ui("scrollFocus: solo %s up (floating) -> maximize", wid);
                     spawnDetached(`${process.env.HOME}/.local/bin/hc_maximize`, [], { toLog: true });
                 } else {
-                    ui("scrollFocus: solo %s up (tiled) -> float", wid);
+                    // Float + center to frame. The vacated frame is
+                    // deliberately LEFT in place even when this was
+                    // its only client — hlwm never auto-removes frames
+                    // and nothing here removes it; the window centers
+                    // within the frame's content geometry (hc_center's
+                    // frame mode), not the monitor.
+                    ui("scrollFocus: solo %s up (tiled) -> float + center to frame", wid);
                     await hc.setAttr(`clients.${wid}.floating`, "true");
+                    await runHelper(`${process.env.HOME}/.local/bin/hc_center`, ["frame"]);
                 }
             } else {
                 if (tag.endsWith("-max")) {
