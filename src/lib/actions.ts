@@ -270,8 +270,21 @@ export async function scrollFocus(wid: string, dir: "up" | "down"): Promise<void
         return;
     }
 
-    // Multi-member group: cycle focus previous/next within the group,
-    // wraparound, including minimized members (original behaviour).
+    // Multi-member group. An INACTIVE group first gets FOCUSED (its
+    // representative brought forward); cycling only starts once the
+    // group's frame is focused.
+    if (active && !members.some((m) => m.wid === active)) {
+        const sel = (await frameSelection(row.frame)) ?? "";
+        const rep = members.some((m) => m.wid === sel) ? sel : members[0].wid;
+        ui("scrollFocus: inactive group -> focus its representative %s first", rep);
+        await hc.jumpto(rep);
+        await hc.raise(rep);
+        return;
+    }
+
+    // Cycle focus within the group (wraparound, including minimized
+    // members) — scroll UP selects the NEXT window, scroll DOWN the
+    // previous (the reversed order per the user's spec).
     const wids = members.map((c) => c.wid);
 
     // Position of the active window (0 = not found -> treat as "before first").
@@ -285,9 +298,9 @@ export async function scrollFocus(wid: string, dir: "up" | "down"): Promise<void
     const n = wids.length;
     let target: string | undefined;
     if (dir === "up") {
-        target = pos <= 1 ? wids[n - 1] : wids[pos - 2];
-    } else {
         target = pos === 0 || pos >= n ? wids[0] : wids[pos];
+    } else {
+        target = pos <= 1 ? wids[n - 1] : wids[pos - 2];
     }
     if (target) {
         ui("scrollFocus: active=%s pos=%d of %d -> target=%s", active, pos, n, target);

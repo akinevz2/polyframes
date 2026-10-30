@@ -17,8 +17,8 @@
 import * as hc from "../hc";
 import { ui } from "../debug";
 import { flatToDotted } from "../frames";
-import { attrRaw } from "./rofi";
 import { runRofiDmenu } from "./rofi";
+import { toggleFocus } from "../actions";
 
 const SWITCHER_THEME = `${process.env.HOME}/.config/rofi/window-switcher.rasi`;
 
@@ -97,10 +97,12 @@ export async function switcherMenu(args: SwitcherMenuArgs): Promise<void> {
         return;
     }
     ui("switcher-menu: chose %s (%s)", target, menuLines[Number(choice)]);
-    // Execute the focus change here — the caller is detached and never
-    // reads our stdout.
-    await hc.cmd("jumpto", target);
-    await hc.cmd("raise", target);
+    // The switcher REPLICATES the single-window frame left-click
+    // behaviours (the toggle-focus state machine): selecting an
+    // inactive window brings it forward, selecting the active one
+    // floats it, and so on — one selection semantics for both paths.
+    // (Runs here — the caller is detached and never reads stdout.)
+    await toggleFocus(target);
     // Emit the chosen wid (discarded when detached; handy for debugging).
     process.stdout.write(`${target}\n`);
 }
