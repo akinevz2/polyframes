@@ -6,6 +6,11 @@ BIN    ?= $(PREFIX)/bin/polyframes
 
 DIST := dist/index
 
+# The theme applied by `make theme` / `make reload` — herbst_theme's
+# file (deployed by the doftiles shell/agents stow), force-applied so
+# the fresh-start guard doesn't skip it.
+THEME_CMD ?= $(HOME)/.local/bin/reload_theme -f
+
 # Build targets:
 #   make build        -> glibc standalone (runs on THIS host + typical Linux)
 #   make build-static -> musl artifact (portable to musl distros; NOT runnable
@@ -21,8 +26,19 @@ build-static:
 	mv -f $(DIST) dist/polyframes-musl
 	rm -f dist/index.map
 
-install: build
+# Apply the theme (herbst_theme's file): hlwm decorations, borders,
+# title strips — force-applied past the fresh-start guard.
+theme:
+	$(THEME_CMD)
+
+install: build theme-binary
+theme-binary:
 	install -m 755 dist/polyframes $(BIN)
+	$(MAKE) theme
+
+# "make reload" re-applies the theme — the hlwm decorations/borders/
+# titles — without touching the running WM.
+reload: theme
 
 # Pure renderer/grouping spec — always safe to run.
 test:
@@ -39,4 +55,4 @@ testlive:
 clean:
 	rm -rf dist .bunli
 
-.PHONY: build build-static install test testlive clean
+.PHONY: build build-static theme install reload test testlive clean
