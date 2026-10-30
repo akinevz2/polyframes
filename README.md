@@ -28,12 +28,25 @@ note that on this WSL2 Ubuntu host only the glibc build runs.
 ## Install
 
 ```sh
-git clone <repo> ~/development/personal/polyframes
-cd ~/development/personal/polyframes
+git clone https://github.com/akinevz2/polyframes \
+    ./path/to/my/personal/install/directory
+cd ./path/to/my/personal/install/directory
 bun install
 make install      # build (glibc target) + install
                   # to ~/.local/bin/polyframes
 ```
+
+The CLONE LOCATION is arbitrary — nothing in the binary depends on
+where the repo lives (the compiled executable
+self-locates via `realpath(process.execPath)`). What IS location-
+bound is the INSTALL
+PREFIX: `make install PREFIX=/opt` puts the binary in
+`/opt/bin/polyframes`; the dots config references
+`~/.local/bin/polyframes`, so keep the default PREFIX unless you
+update `[module/polyframes]` too. Runtime paths:
+`$HOME/.config/rofi` (the menu themes), `$HOME/.local/bin` (the
+dots helper shims), `/tmp/polyframes.log` (the debug log) — all
+$HOME-relative, none repo-relative.
 
 ## CLI
 

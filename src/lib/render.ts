@@ -2,7 +2,7 @@
 // Pure function: groups + settings in, bar line out.
 
 import { format as dbg, dir } from "./debug";
-import { clickMap } from "./clickmap";
+import { clickMap, emptyDesktopClickMap } from "./clickmap";
 import type { Group } from "./groups";
 
 export interface RenderSettings {
@@ -165,16 +165,12 @@ export function render(
 
     if (total > s.max_windows) out += `+${total - s.max_windows}`;
     if (total === 0) {
-        // Empty desktop — consistent with single-window group handling.
-        // All menus are subcommands of this binary (moved from dots
-        // herbst helpers); polybar exec's the command string via the
-        // shell, and the quoted absolute self path survives any cwd.
-        // Contract (pinned by the render spec): left click -> hidden
-        // windows picker, middle click -> window switcher, scroll up ->
-        // tag switcher, scroll down -> app launcher.
-        out += `%{A1:${onClick} hidden:}%{A3:${onClick} windows:}`
-            + `%{A4:${onClick} tags:}%{A5:${onClick} launch:}`
-            + `${s.empty_desktop_message}%{A}%{A}%{A}%{A}`;
+        // Empty desktop: the STATIC click map (the same fluent
+        // pipeline, uniform with the group map) — left = tags
+        // switcher, right = hidden picker, middle = app launcher,
+        // scroll up = launcher, scroll down = hidden picker.
+        out += emptyDesktopClickMap.emit(
+            {} as Group, onClick, s.empty_desktop_message);
     }
     dbg("render: shown=%d total=%d, bar length=%d", shown, total, out.length);
     dir("format", "bar", out);

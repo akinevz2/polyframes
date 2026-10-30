@@ -159,11 +159,15 @@ describe("renderer contract", () => {
         expect(render(groups, ONCLICK)).toBe("");
     });
 
-    test("empty desktop renders the placeholder with the pinned helper actions (self subcommands)", () => {
+    test("empty desktop: the static click map — five uniform actions", () => {
         const bar = render([], ONCLICK);
         const self = "polyframes";
+        // left = tags, right = hidden, middle = launch,
+        // scroll up = launch, scroll down = hidden
         expect(bar).toBe(
-            `%{A1:${self} hidden:}%{A3:${self} windows:}%{A4:${self} tags:}%{A5:${self} launch:}Desktop%{A}%{A}%{A}%{A}`,
+            `%{A1:${self} tags:}%{A2:${self} hidden:}%{A3:${self} launch:}`
+            + `%{A4:${self} launch:}%{A5:${self} hidden:}`
+            + `Desktop%{A}%{A}%{A}%{A}%{A}`,
         );
         // No dots helper names leak into the bar.
         expect(bar).not.toContain("rofi_");

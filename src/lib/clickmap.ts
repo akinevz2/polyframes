@@ -147,3 +147,25 @@ export const defaultClickMap: ClickMap = new ClickMap()
     .associate(scrollDown, "A5", "scroll", (g, self) =>
         `${self} scroll --wid ${g.rep} --dir down`)
     .install();
+
+/**
+ * The EMPTY-DESKTOP map: same fluent pipeline, STATIC formatters (no
+ * group to format for — the actions are whole-menu launchers). Per
+ * spec: left = tags switcher, right = hidden picker, middle = app
+ * launcher, scroll up = launcher, scroll down = hidden picker.
+ * Five bindings → five openers/closers, uniform with the default map.
+ */
+export const emptyDesktopClickMap: ClickMap = new ClickMap()
+    .associate(lmbClick, "A1", "tags", (_g, self) => `${self} tags`)
+    .associate(rmbClick, "A2", "hidden", (_g, self) => `${self} hidden`)
+    .associate(mmbClick, "A3", "launch", (_g, self) => `${self} launch`)
+    .associate(scrollUp, "A4", "launch", (_g, self) => `${self} launch`)
+    .associate(scrollDown, "A5", "hidden", (_g, self) => `${self} hidden`);
+// NOT installed: render() selects it explicitly for the empty-desktop
+// branch (installing here would steal the global pipeline slot).
+
+/**
+ * The default GROUP map: five uniform registrations; the A1 handler's
+ * specialisation (group vs single, focused vs inactive) lives inside
+ * its named callback (switchToggleHandler above).
+ */
