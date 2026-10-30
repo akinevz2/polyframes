@@ -7,6 +7,7 @@ import { openSync } from "node:fs";
 import { promisify } from "node:util";
 import * as hc from "./hc";
 import { getClients, type Client } from "./clients";
+import { groupClients } from "./groups";
 import { frameSelection } from "./frames";
 import { ui } from "./debug";
 import { selfCommand } from "./self";
@@ -213,157 +214,139 @@ async function findSwitcherPid(frame: string, cls: string): Promise<number | nul
  */
 export async function scrollFocus(wid: string, dir: "up" | "down"): Promise<void> {
     ui("scrollFocus: wid=%s dir=%s", wid, dir);
-    // Resolve the window's frame/class fresh at click time — the bar
-    // label only carried the representative wid, so group membership
-    // reflects the CURRENT layout, not the one at render time.
+    // The scrolled label is a bar GROUP; resolve its state through the
+    // SAME grouping/styling source the renderer used, so what the user
+    // sees (grey-no-underline, grey-underlined, yellow, ...) and what
+    // the scroll does can never drift apart.
     const clients = await getClients();
     const row = clients.find((c) => c.wid === wid);
     if (!row) {
         ui("scrollFocus: wid %s vanished, aborting", wid);
         return;
     }
-    const members = await frameClients(row.frame, row.cls);
-    if (members.length === 0) {
-        ui("scrollFocus: no members, aborting");
-        return;
-    }
-
-    const unminimized = members.filter((c) => !c.min);
     const active = await getFocusedWid();
+    const groups = await groupClients(clients, active);
+    const expected = row.min ? "min" : row.flt ? "flt" : "tiling";
+    const g =
+        groups.find((x) => x.rep === wid) ??
+        groups.find((x) => x.frame === row.frame && x.cls === row.cls &&
+            x.state === expected);
+    if (!g) {
+        ui("scrollFocus: no group for %s, aborting", wid);
+        return;
+    }
 
-    // Solo minimized window (minflt group: frame "-1", one member):
-    // up -> jumpto (unminimize + focus); down -> tag switcher
-    // (rofi_tags).
-    if (members.length === 1 && members[0].min) {
-        const wid = members[0].wid;
+    const tags = () => spawnDetached(SELF, ["tags"], { toLog: true });
+    const focus = async () => {
+        await hc.jumpto(g.rep);
+        await hc.raise(g.rep);
+    };
+
+    // MINIMIZED group (grey, no underline):
+    //   up   -> unminimize + focus the representative
+    //   down -> tag switcher
+    if (g.state === "min") {
         if (dir === "up") {
-            ui("scrollFocus: minimized %s up -> unminimize + jumpto", wid);
-            // Original shell port called attr(path, false) — attr only
-            // READS, so the explicit unminimize never happened (jumpto
-            // masked it). Set it properly here.
-            await hc.setAttr(`clients.${wid}.minimized`, "false");
-            await hc.jumpto(wid);
+            if ((await hc.attr(`clients.${g.rep}.minimized`)) === "true") {
+                await hc.setAttr(`clients.${g.rep}.minimized`, "false");
+            }
+            await focus();
         } else {
-            ui("scrollFocus: minimized %s down -> tag switcher", wid);
-            spawnDetached(SELF, ["tags"], { toLog: true });
+            ui("scrollFocus: minimized group -> tag switcher");
+            tags();
         }
         return;
     }
 
-    // Group with exactly one unminimized member (the visible rep).
-    // Focused -> the escalation ladder; unfocused -> up: raise+jumpto,
-    // down: tag switcher (no focus).
-    if (members.length === 1 && unminimized.length === 1) {
-        const m = unminimized[0];
-        const wid = m.wid;
-        if (wid === active) {
-            // Ladder state: maximized (on a "<...>-max" tag) > floating
-            // > tiled.
-            const tag = (await hc.attr(`clients.${wid}.tag`)) ?? "";
-            if (dir === "up") {
-                if (tag.endsWith("-max")) {
-                    ui("scrollFocus: solo %s up (maximized) -> minimize", wid);
-                    await hc.setAttr(`clients.${wid}.minimized`, "true");
-                } else if (m.flt) {
-                    ui("scrollFocus: solo %s up (floating) -> maximize", wid);
-                    spawnDetached(`${process.env.HOME}/.local/bin/hc_maximize`, [], { toLog: true });
-                } else {
-                    // Float + center to frame, under a lock so both
-                    // land in one motion (no intermediate paint of the
-                    // uncentered float). The vacated frame is
-                    // deliberately LEFT in place even when this was
-                    // its only client — hlwm never auto-removes frames
-                    // and nothing here removes it; the window centers
-                    // within the frame's content geometry (hc_center's
-                    // frame mode), not the monitor.
-                    ui("scrollFocus: solo %s up (tiled) -> float + center to frame", wid);
-                    await hc.lock();
-                    try {
-                        await hc.setAttr(`clients.${wid}.floating`, "true");
-                        await runHelper(`${process.env.HOME}/.local/bin/hc_center`, ["frame"]);
-                    } finally {
-                        await hc.unlock();
-                    }
+    // Group holding the focused window: multi-member groups CYCLE
+    // within the group (wraparound, including minimized members);
+    // single-window groups ride the ESCALATION LADDER:
+    //   up:   tiled -> float+center-to-frame -> maximized -> minimized
+    //   down: tiled -> minimize (frame kept) <- floating <- maximized
+    //         (with floating = PLAIN unfloat, deliberately not the
+    //         left-click hc_tile re-tile semantics)
+    if (g.isActive === 1) {
+        if (g.count > 1) {
+            const members = await frameClients(g.frame, g.cls);
+            const wids = members.map((c) => c.wid);
+            let pos = 0;
+            for (let i = 0; i < wids.length; i += 1) {
+                if (wids[i] === active) {
+                    pos = i + 1;
+                    break;
                 }
+            }
+            const n = wids.length;
+            const target =
+                dir === "up"
+                    ? pos === 0 || pos >= n ? wids[0] : wids[pos]
+                    : pos <= 1 ? wids[n - 1] : wids[pos - 2];
+            if (target) {
+                ui("scrollFocus: cycle active=%s pos=%d of %d -> %s", active, pos, n, target);
+                await hc.jumpto(target);
+            }
+            return;
+        }
+
+        const tag = (await hc.attr(`clients.${wid}.tag`)) ?? "";
+        if (dir === "up") {
+            if (tag.endsWith("-max")) {
+                ui("scrollFocus: solo %s up (maximized) -> minimize", wid);
+                await hc.setAttr(`clients.${wid}.minimized`, "true");
+            } else if (row.flt) {
+                ui("scrollFocus: solo %s up (floating) -> maximize", wid);
+                spawnDetached(`${process.env.HOME}/.local/bin/hc_maximize`, [], { toLog: true });
             } else {
-                if (tag.endsWith("-max")) {
-                    ui("scrollFocus: solo %s down (maximized) -> unmaximize", wid);
-                    spawnDetached(`${process.env.HOME}/.local/bin/hc_unmaximize`, [], { toLog: true });
-                } else if (m.flt) {
-                    // PLAIN unfloat — deliberately not the left-click
-                    // hc_tile re-tile semantics.
-                    ui("scrollFocus: solo %s down (floating) -> unfloat", wid);
-                    await hc.setAttr(`clients.${wid}.floating`, "false");
-                } else {
-                    ui("scrollFocus: solo %s down (tiled) -> minimize (keep frame)", wid);
-                    await hc.setAttr(`clients.${wid}.minimized`, "true");
+                // Float + center to frame, under a lock so both land in
+                // one motion (no intermediate paint of the uncentered
+                // float). The vacated frame is deliberately LEFT in
+                // place even when this was its only client — hlwm never
+                // auto-removes frames and nothing here removes it; the
+                // window centers within the frame's content geometry
+                // (hc_center's frame mode), not the monitor.
+                ui("scrollFocus: solo %s up (tiled) -> float + center to frame", wid);
+                await hc.lock();
+                try {
+                    await hc.setAttr(`clients.${wid}.floating`, "true");
+                    await runHelper(`${process.env.HOME}/.local/bin/hc_center`, ["frame"]);
+                } finally {
+                    await hc.unlock();
                 }
             }
-            return;
-        }
-        if (dir === "down") {
-            ui("scrollFocus: solo %s down (unfocused, visible) -> raise + jumpto", wid);
-            await hc.raise(wid);
-            await hc.jumpto(wid);
-            return;
-        }
-        ui("scrollFocus: solo %s up (unfocused) -> raise + jumpto", wid);
-        await hc.raise(wid);
-        await hc.jumpto(wid);
-        return;
-    }
-
-    // Multi-member group. The styling matrix renders all-minimized
-    // groups grey WITHOUT underline — those are the only groups whose
-    // scroll-down opens the tag switcher; visible (grey-underlined or
-    // plain) groups are FOCUSED on scroll-down in both directions.
-    if (active && !members.some((m) => m.wid === active)) {
-        const sel = (await frameSelection(row.frame)) ?? "";
-        const rep = members.some((m) => m.wid === sel) ? sel : members[0].wid;
-        if (members.every((m) => m.min)) {
-            if (dir === "down") {
-                ui("scrollFocus: inactive all-minimized group -> tag switcher (no focus)");
-                spawnDetached(SELF, ["tags"], { toLog: true });
-                return;
+        } else {
+            if (tag.endsWith("-max")) {
+                ui("scrollFocus: solo %s down (maximized) -> unmaximize", wid);
+                spawnDetached(`${process.env.HOME}/.local/bin/hc_unmaximize`, [], { toLog: true });
+            } else if (row.flt) {
+                // PLAIN unfloat — deliberately not the left-click
+                // hc_tile re-tile semantics.
+                ui("scrollFocus: solo %s down (floating) -> unfloat", wid);
+                await hc.setAttr(`clients.${wid}.floating`, "false");
+            } else {
+                ui("scrollFocus: solo %s down (tiled) -> minimize (keep frame)", wid);
+                await hc.setAttr(`clients.${wid}.minimized`, "true");
             }
-            ui("scrollFocus: inactive all-minimized group up -> unminimize + focus %s", rep);
-            await hc.setAttr(`clients.${rep}.minimized`, "false");
-            await hc.jumpto(rep);
-            await hc.raise(rep);
-            return;
         }
-        ui("scrollFocus: inactive group -> focus its representative %s first", rep);
-        await hc.jumpto(rep);
-        await hc.raise(rep);
         return;
     }
 
-    // Cycle focus within the group (wraparound, including minimized
-    // members) — scroll UP selects the NEXT window, scroll DOWN the
-    // previous (the reversed order per the user's spec).
-    const wids = members.map((c) => c.wid);
-
-    // Position of the active window (0 = not found -> treat as "before first").
-    let pos = 0;
-    for (let i = 0; i < wids.length; i += 1) {
-        if (wids[i] === active) {
-            pos = i + 1;
-            break;
+    // NOT VISIBLE (covered frames — e.g. hidden behind a max layout;
+    // grey, underlined when grouped):
+    //   down -> tag switcher      up -> raise into view (focus)
+    if (g.state === "tiling" && !g.isVisible) {
+        if (dir === "down") {
+            ui("scrollFocus: not-visible group -> tag switcher");
+            tags();
+        } else {
+            ui("scrollFocus: not-visible group up -> raise into view");
+            await focus();
         }
+        return;
     }
-    const n = wids.length;
-    let target: string | undefined;
-    if (dir === "up") {
-        target = pos === 0 || pos >= n ? wids[0] : wids[pos];
-    } else {
-        target = pos <= 1 ? wids[n - 1] : wids[pos - 2];
-    }
-    if (target) {
-        ui("scrollFocus: active=%s pos=%d of %d -> target=%s", active, pos, n, target);
-        await hc.jumpto(target);
-    } else {
-        ui("scrollFocus: no target resolved (pos=%d n=%d)", pos, n);
-    }
+
+    // Anything else (floating unfocused, tiled visible unfocused):
+    // focus it in both directions.
+    await focus();
 }
 
 /**
