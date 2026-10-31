@@ -1,0 +1,21 @@
+# npm pack ignore — when an .npmignore exists it REPLACES .gitignore
+# for packing, so this carries the full deny-list (the build tree, the
+# dev machinery); the tarball ships src/, package.json, README.md.
+node_modules/
+dist/
+.bunli/
+.github/
+tests/
+scripts/
+docs/
+build/
+/tmp/
+*.log
+*.tsbuildinfo
+bun.lock
+tsconfig.json
+tsconfig.node.json
+eslint.config.js
+Makefile
+HACKING.md
+TODO.md
