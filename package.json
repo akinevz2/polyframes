@@ -19,6 +19,7 @@
     "herbctl": "github:akinevz2/herbctl"
   },
   "devDependencies": {
+    "@oven/bun-linux-x64": "^1.4.4",
     "@types/bun": "latest",
     "bunli": "^0.8.2",
     "typescript": "^5"
@@ -28,6 +29,7 @@
   },
   "trustedDependencies": [
     "bun",
+    "herbctl",
     "herbstutil"
   ]
 }
