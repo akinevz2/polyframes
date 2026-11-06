@@ -8,7 +8,7 @@ import { switcherMenu } from "../lib/menus/switcherMenu";
 
 export default defineCommand({
     name: "switcher-menu" as const,
-    description: "Internal: rofi group switcher",
+    description: "Rofi group switcher",
     options: {
         frame: option(z.string(), { description: "Flat frame index", short: "f" }),
         cls: option(z.string(), { description: "Window class of the group", short: "c" }),

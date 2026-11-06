@@ -6,7 +6,7 @@ import { toggleFocus } from "../lib/actions";
 
 export default defineCommand({
     name: "toggle-focus" as const,
-    description: "Left-click state machine: unminimize / focus / float / re-tile",
+    description: "Click focus state machine",
     options: {
         wid: option(z.string().min(1), { description: "Window id (0x…)", short: "w" }),
     },

@@ -1,7 +1,7 @@
 {
   "name": "polyframes",
-  "version": "2.1.1",
-  "description": "Polybar window/frame label renderer for herbstluftwm — bunli CLI, compiled to a standalone native binary",
+  "version": "2.2.0",
+  "description": "kine's polybar window frames for herbstluftwm - native binary via bunx.",
   "type": "module",
   "bin": {
     "polyframes": "src/index.ts"

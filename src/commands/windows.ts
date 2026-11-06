@@ -5,8 +5,7 @@ import { windowsMenu } from "../lib/menus/windows";
 
 export default defineCommand({
     name: "windows" as const,
-    description:
-        "Rofi window switcher across tags; args [class] [frame], envs PROMPT/WIDTH_EM honored (former rofi_windows)",
+    description: "Rofi window switcher",
     handler: async ({ positional }) => {
         await windowsMenu(positional);
     },

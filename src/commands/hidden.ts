@@ -7,7 +7,7 @@ import { hiddenMenu, hiddenRows } from "../lib/menus/hidden";
 
 export default defineCommand({
     name: "hidden" as const,
-    description: "Hidden (minimized) windows picker",
+    description: "Minimized window picker",
     handler: async () => {
         // Launcher mode: no hidden clients -> in-process fallback to the
         // windows switcher, whose rofi exit status becomes this process'

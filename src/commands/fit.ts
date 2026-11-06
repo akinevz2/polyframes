@@ -8,7 +8,7 @@ import { fitTo } from "../lib/center";
 
 export default defineCommand({
     name: "fit" as const,
-    description: "Fit a floating window to bounds",
+    description: "Fit float to bounds",
     options: {
         wid: option(z.string().optional(), {
             description: "Fit THIS window instead of the focused one",

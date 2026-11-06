@@ -6,7 +6,7 @@ import { toggle } from "../lib/actions";
 
 export default defineCommand({
     name: "toggle" as const,
-    description: "Float / minimize / unminimize-into-frame state machine",
+    description: "Float/minimize toggle",
     options: {
         wid: option(z.string().min(1), { description: "Window id (0x…)", short: "w" }),
     },

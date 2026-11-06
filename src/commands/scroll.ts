@@ -6,7 +6,7 @@ import { scrollFocus } from "../lib/actions";
 
 export default defineCommand({
     name: "scroll" as const,
-    description: "Scroll-cycle focus in a group",
+    description: "Scroll-cycle focus",
     options: {
         wid: option(z.string().min(1), { description: "Window id (0x…)", short: "w" }),
         dir: option(z.enum(["up", "down"]), { description: "Scroll direction", short: "d" }),

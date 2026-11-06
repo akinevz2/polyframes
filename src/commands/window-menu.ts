@@ -8,8 +8,7 @@ import { windowMenu } from "../lib/menus/windowMenu";
 
 export default defineCommand({
     name: "window-menu" as const,
-    description:
-        "Internal: window-operations rofi menu, [<wid>] or the focused frame's visible client (former hc_menu)",
+    description: "Internal window menu",
     options: {
         xoffset: option(z.coerce.number().default(0), {
             description: "Horizontal offset (px) of this label from the bar's center (menu anchoring)",

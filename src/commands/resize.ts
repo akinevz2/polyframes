@@ -16,7 +16,7 @@ import { resizeDelta, resizeFill, resizeToRect } from "../lib/resize";
 
 export default defineCommand({
     name: "resize" as const,
-    description: "Resize a floating/pseudotiled client",
+    description: "Resize floating client",
     options: {
         wid: option(z.string().optional(), {
             description: "Target THIS window instead of the focused one", short: "w",

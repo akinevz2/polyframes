@@ -6,7 +6,7 @@ import { dismiss } from "../lib/actions";
 
 export default defineCommand({
     name: "dismiss" as const,
-    description: "Minimize or restore a window",
+    description: "Minimize or restore",
     options: {
         wid: option(z.string().min(1), { description: "Window id (0x…)", short: "w" }),
     },

@@ -5,8 +5,7 @@ import { tile } from "../lib/tile";
 
 export default defineCommand({
     name: "tile" as const,
-    description:
-        "Navigate to the closest empty frame (or split auto one) and tile the window into it (former hc_tile)",
+    description: "Tile into empty frame",
     handler: async ({ positional }) => {
         await tile(positional[0]);
     },
