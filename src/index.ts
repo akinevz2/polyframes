@@ -10,6 +10,7 @@
 // `polyframes --help` for the full surface.
 
 import { createCLI } from "@bunli/core";
+import pkg from "../package.json";
 
 import { runDaemon, printBar } from "./lib/bar";
 import { setVerbose } from "./lib/debug";
@@ -69,10 +70,9 @@ async function main(): Promise<void> {
     }
 
     const cli = await createCLI({
-        name: "polyframes",
-        version: "2.0.0",
-        description:
-            "Polybar window-list renderer for herbstluftwm. Bare invocation starts the bar daemon.",
+        name: pkg.name,
+        version: pkg.version,
+        description: pkg.description,
     });
 
     cli.command(barCommand);
