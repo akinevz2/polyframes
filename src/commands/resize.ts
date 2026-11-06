@@ -16,8 +16,7 @@ import { resizeDelta, resizeFill, resizeToRect } from "../lib/resize";
 
 export default defineCommand({
     name: "resize" as const,
-    description:
-        "Resize a floating/pseudotiled client: delta nudges, frame-fill, or an explicit content rect (former hc_resize)",
+    description: "Resize a floating/pseudotiled client",
     options: {
         wid: option(z.string().optional(), {
             description: "Target THIS window instead of the focused one", short: "w",

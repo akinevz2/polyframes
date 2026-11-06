@@ -6,7 +6,7 @@ import { wmEnv } from "../lib/menus/rofi";
 
 export default defineCommand({
     name: "launch" as const,
-    description: "Rofi drun/run app launcher (former rofi_launch)",
+    description: "Rofi drun/run app launcher",
     handler: async ({ positional }) => {
         const r = spawnSync("rofi", [
             "-modi", "drun,run",

@@ -8,8 +8,7 @@ import { switcherMenu } from "../lib/menus/switcherMenu";
 
 export default defineCommand({
     name: "switcher-menu" as const,
-    description:
-        "Internal: rofi dmenu for one (frame, class) group, all typed (former hc_switcher)",
+    description: "Internal: rofi group switcher",
     options: {
         frame: option(z.string(), { description: "Flat frame index", short: "f" }),
         cls: option(z.string(), { description: "Window class of the group", short: "c" }),

@@ -4,7 +4,7 @@ import { tagsMenu } from "../lib/menus/tags";
 
 export default defineCommand({
     name: "tags" as const,
-    description: "Rofi tag switcher across tags (former rofi_tags)",
+    description: "Rofi tag switcher",
     handler: async ({ positional }) => {
         await tagsMenu(positional);
     },

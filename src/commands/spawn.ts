@@ -14,9 +14,7 @@ import { spawnOnce } from "../lib/spawn";
 
 export default defineCommand({
     name: "spawn" as const,
-    description:
-        "Spawn a client with a one-off hlwm rule (floating/centered/tag options). "
-        + "Args after -- : <command> [args...]",
+    description: "Spawn a client with a one-off rule",
     options: {
         class: option(z.string().optional(), {
             description: "WM_CLASS match criterion", short: "c",

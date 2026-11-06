@@ -6,7 +6,7 @@ import { menu } from "../lib/actions";
 
 export default defineCommand({
     name: "menu" as const,
-    description: "Open the hc_menu window-operations menu for a window",
+    description: "Open the window-operations menu",
     options: {
         wid: option(z.string().min(1), { description: "Window id (0x…)", short: "w" }),
     },

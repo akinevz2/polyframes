@@ -6,8 +6,7 @@ import { center, centerWindowInOwnFrame } from "../lib/center";
 
 export default defineCommand({
     name: "center" as const,
-    description:
-        "Center the focused floating window (preserving size) in its frame or the workspace (former hc_center)",
+    description: "Center the focused window",
     options: {
         wid: option(z.string().optional(), {
             description:

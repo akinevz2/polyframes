@@ -6,7 +6,7 @@ import { printBar } from "../lib/bar";
 
 export default defineCommand({
     name: "bar" as const,
-    description: "Print one bar line and exit (daemon starts on bare invocation)",
+    description: "Print one bar line and exit",
     options: {
         once: option(z.coerce.boolean().default(true), {
             description: "Print a single bar line, no listeners",

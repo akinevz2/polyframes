@@ -1,6 +1,6 @@
 {
   "name": "polyframes",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Polybar window/frame label renderer for herbstluftwm — bunli CLI, compiled to a standalone native binary",
   "type": "module",
   "bin": {

@@ -10,8 +10,7 @@ const classSchema = z.string().min(1);
 
 export default defineCommand({
     name: "switcher" as const,
-    description:
-        "Open the frame+class window switcher (rofi dmenu). Usage: polyframes switcher <frame> <class>",
+    description: "Frame+class window switcher",
     handler: async ({ positional }) => {
         const [frame = "", cls = ""] = positional;
         if (!cls) throw new Error("Usage: polyframes switcher <frame> <class>");

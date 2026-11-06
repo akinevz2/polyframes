@@ -8,8 +8,7 @@ import { fitTo } from "../lib/center";
 
 export default defineCommand({
     name: "fit" as const,
-    description:
-        "Fit a floating window: resize down + nudge into bounds (deco-aware). Default target: the monitor work area; 'frame' constrains to the focused frame",
+    description: "Fit a floating window to bounds",
     options: {
         wid: option(z.string().optional(), {
             description: "Fit THIS window instead of the focused one",
