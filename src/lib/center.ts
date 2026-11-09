@@ -124,12 +124,13 @@ async function reconcileAfterWrite(
     };
     const stable = real.width === want.width && real.height === want.height
         && real.x === want.x && real.y === want.y;
+    const sg = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
     if (stable) {
-        ui("reconcile: %s stable (%dx%d%+d%+d)", winid, real.width, real.height, real.x, real.y);
+        ui("reconcile: %s stable (%dx%d%s%s)", winid, real.width, real.height, sg(real.x), sg(real.y));
         return;
     }
-    ui("reconcile: %s snapped to %dx%d%+d%+d -> re-fitting from deco truth",
-        winid, real.width, real.height, real.x, real.y);
+    ui("reconcile: %s snapped to %dx%d%s%s -> re-fitting from deco truth",
+        winid, real.width, real.height, sg(real.x), sg(real.y));
     const fit = refit({ width: real.width, height: real.height });
     await hc.setAttr(`clients.${winid}.floating_geometry`,
         `${fit.width}x${fit.height}+${fit.x}+${fit.y}`);
@@ -312,13 +313,14 @@ export async function centerWindowInOwnFrame(wid: string): Promise<void> {
 /**
  * Pin a floating window into the TOP-LEFT QUADRANT of the target rect
  * ("root" = the monitor's work area, "frame" = the focused frame):
- * the size shrinks DOWN to half the inner rect (decoration-aware,
- * never grows — a window smaller than the quadrant keeps its size),
- * the position anchors at the target's top-left inner corner. The
- * top-left analog of the centered placement, sharing its math.
- * Size-hint snapping is reconciled after the write (the same pass
- * placeCenteredIn/fitTo use): the re-fit re-pins the top-left anchor
- * with the size hlwm actually holds.
+ * the size becomes the QUADRANT — half the inner rect, decoration-
+ * aware (a window with min-size hints beyond the quadrant keeps the
+ * size hlwm enforces, reconciled below) — and the position anchors
+ * at the target's top-left inner corner. The top-left analog of the
+ * centered placement, sharing its math. Size-hint snapping is
+ * reconciled after the write (the same pass placeCenteredIn/fitTo
+ * use): the re-fit re-pins the top-left anchor with the size hlwm
+ * actually holds.
  */
 export async function cornerQuadrant(
     wid: string,
@@ -350,33 +352,34 @@ export async function cornerQuadrant(
         ui("cornerQuadrant: cannot parse window geometry %j", winGeom);
         return;
     }
-    const curW = Number(wm[1]);
-    const curH = Number(wm[2]);
 
-    // Quadrant target: half the inner rect; SHRINK-ONLY — a window
-    // smaller than the quadrant keeps its size.
+    // Quadrant target: half the inner rect — the window BECOMES the
+    // quadrant (grow or shrink); size hints beyond the quadrant are
+    // reconciled from hlwm's real content rect below.
     const signed = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
     const want = {
         x: rect.x + L,
         y: rect.y + T,
-        width: Math.min(curW, Math.floor(iw / 2)),
-        height: Math.min(curH, Math.floor(ih / 2)),
+        width: Math.floor(iw / 2),
+        height: Math.floor(ih / 2),
     };
     ui("cornerQuadrant: %s target %dx%d%s%s inner %dx%d -> %dx%d%s%s",
         wid, rect.width, rect.height, signed(rect.x), signed(rect.y),
         iw, ih, want.width, want.height, signed(want.x), signed(want.y));
+    // Write the quadrant, then RE-ASSERT it once after a short settle.
+    // NO read-back reconciliation: hlwm applies floating_geometry
+    // writes asynchronously (and clamps the stored attr to the
+    // client's size hints at write time), so a post-write content
+    // read can race the apply and "reconcile" from the stale
+    // pre-write geometry — an oversized float shrinking into the
+    // quadrant would re-fit the whole monitor into the anchor. The
+    // write itself is the truth; the re-assert simply rides out the
+    // apply window (~150 ms — well under the visible-latency floor).
     await hc.setAttr(`clients.${wid}.floating_geometry`,
         `${want.width}x${want.height}+${want.x}+${want.y}`);
-    // Reconcile against hlwm's real content rect (size-hint snapping
-    // can shift the outline): re-pin the top-left anchor with the
-    // size hlwm actually holds, clamped to the inner rect.
-    await reconcileAfterWrite(wid, rect, { L, T, R, B }, want,
-        (size) => ({
-            x: rect.x + L,
-            y: rect.y + T,
-            width: Math.max(1, Math.min(size.width, iw)),
-            height: Math.max(1, Math.min(size.height, ih)),
-        }));
+    await new Promise((r) => setTimeout(r, 150));
+    await hc.setAttr(`clients.${wid}.floating_geometry`,
+        `${want.width}x${want.height}+${want.x}+${want.y}`);
 }
 
 export async function center(targetArg?: string): Promise<void> {

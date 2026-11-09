@@ -1,9 +1,9 @@
 // src/commands/corner.ts — pin the focused float to the TOP-LEFT
 // QUADRANT of the monitor's work area (default) or the focused frame:
-// the size shrinks down to half the inner rect (never grows), the
-// position anchors at the top-left inner corner (deco-aware, with the
-// shared size-hint reconcile pass). The hc_floatx ModCtrl-x register
-// calls this on an already-floating window.
+// the size becomes the quadrant (half the inner rect, decoration-
+// aware, size-hint snapping reconciled), the position anchors at the
+// top-left inner corner. The hc_floatx ModCtrl-x register calls this
+// on an already-floating window.
 import { defineCommand, option } from "@bunli/core";
 import { z } from "zod";
 import { cornerQuadrant } from "../lib/center";
