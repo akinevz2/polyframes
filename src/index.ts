@@ -33,6 +33,7 @@ import { default as tileCommand } from "./commands/tile";
 import { default as centerCommand } from "./commands/center";
 import { default as spawnCommand } from "./commands/spawn";
 import { default as fitCommand } from "./commands/fit";
+import { default as cornerCommand } from "./commands/corner";
 import { default as resizeCommand } from "./commands/resize";
 
 async function main(): Promise<void> {
@@ -94,6 +95,7 @@ async function main(): Promise<void> {
     cli.command(centerCommand);
     cli.command(spawnCommand);
     cli.command(fitCommand);
+    cli.command(cornerCommand);
     cli.command(resizeCommand);
 
     await cli.run();

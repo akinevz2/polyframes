@@ -309,6 +309,76 @@ export async function centerWindowInOwnFrame(wid: string): Promise<void> {
     await placeCenteredIn(wid, geoPath);
 }
 
+/**
+ * Pin a floating window into the TOP-LEFT QUADRANT of the target rect
+ * ("root" = the monitor's work area, "frame" = the focused frame):
+ * the size shrinks DOWN to half the inner rect (decoration-aware,
+ * never grows — a window smaller than the quadrant keeps its size),
+ * the position anchors at the target's top-left inner corner. The
+ * top-left analog of the centered placement, sharing its math.
+ * Size-hint snapping is reconciled after the write (the same pass
+ * placeCenteredIn/fitTo use): the re-fit re-pins the top-left anchor
+ * with the size hlwm actually holds.
+ */
+export async function cornerQuadrant(
+    wid: string,
+    target: "root" | "frame" = "root",
+): Promise<void> {
+    const geoPath = target === "frame"
+        ? "tags.focus.tiling.focused_frame.content_geometry"
+        : "tags.focus.tiling.root.content_geometry";
+    const frameGeom = await hc.attr(geoPath);
+    const fm = frameGeom?.match(/^(\d+)x(\d+)([+-]\d+)([+-]\d+)$/);
+    if (!fm) {
+        ui("cornerQuadrant: cannot parse target geometry %j", frameGeom);
+        return;
+    }
+    const [, fw, fh, fx, fy] = fm.map(Number);
+    const rect: Rect = { x: fx, y: fy, width: fw, height: fh };
+    const [L, T, R, B] = await decoMargins(wid);
+    const iw = Math.max(1, rect.width - L - R);
+    const ih = Math.max(1, rect.height - T - B);
+
+    // Current size: floating_geometry is authoritative while floating
+    // — the same fallback placeCenteredIn uses for stale values.
+    let winGeom = await hc.attr(`clients.${wid}.floating_geometry`);
+    if (!/^\d+x\d+/.test(winGeom ?? "")) {
+        winGeom = await hc.attr(`clients.${wid}.content_geometry`);
+    }
+    const wm = winGeom?.match(/^(\d+)x(\d+)/);
+    if (!wm) {
+        ui("cornerQuadrant: cannot parse window geometry %j", winGeom);
+        return;
+    }
+    const curW = Number(wm[1]);
+    const curH = Number(wm[2]);
+
+    // Quadrant target: half the inner rect; SHRINK-ONLY — a window
+    // smaller than the quadrant keeps its size.
+    const signed = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+    const want = {
+        x: rect.x + L,
+        y: rect.y + T,
+        width: Math.min(curW, Math.floor(iw / 2)),
+        height: Math.min(curH, Math.floor(ih / 2)),
+    };
+    ui("cornerQuadrant: %s target %dx%d%s%s inner %dx%d -> %dx%d%s%s",
+        wid, rect.width, rect.height, signed(rect.x), signed(rect.y),
+        iw, ih, want.width, want.height, signed(want.x), signed(want.y));
+    await hc.setAttr(`clients.${wid}.floating_geometry`,
+        `${want.width}x${want.height}+${want.x}+${want.y}`);
+    // Reconcile against hlwm's real content rect (size-hint snapping
+    // can shift the outline): re-pin the top-left anchor with the
+    // size hlwm actually holds, clamped to the inner rect.
+    await reconcileAfterWrite(wid, rect, { L, T, R, B }, want,
+        (size) => ({
+            x: rect.x + L,
+            y: rect.y + T,
+            width: Math.max(1, Math.min(size.width, iw)),
+            height: Math.max(1, Math.min(size.height, ih)),
+        }));
+}
+
 export async function center(targetArg?: string): Promise<void> {
     // Hold the WM lock for the full float-and-center sequence: the
     // window must not be visible at its stale floating_geometry between

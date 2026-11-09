@@ -1,6 +1,6 @@
 {
   "name": "polyframes",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "kine's polybar window frames for herbstluftwm - native binary via bunx.",
   "type": "module",
   "bin": {
