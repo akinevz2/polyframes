@@ -14,9 +14,9 @@
   },
   "dependencies": {
     "@bunli/core": "^0.8.2",
-    "herbstutil": "^0.3.1",
+    "herbstutil": "github:akinevz2/herbstutil#main",
     "zod": "^4",
-    "herbctl": "1.7.0"
+    "herbctl": "github:akinevz2/herbctl#main"
   },
   "devDependencies": {
     "@oven/bun-linux-x64": "^1.4.4",
