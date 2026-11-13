@@ -13,7 +13,7 @@ import { spawnSync } from "node:child_process";
 import { selfCommand } from "../self";
 import { ui } from "../debug";
 import * as hc from "../hc";
-import type { Rect } from "../center";
+import type { Rect } from "herbctl/src/lib/geometry.js";
 import { always } from "../debug";
 
 /** US (0x1f) separates meta fields inside one row; NUL (0x0) separates

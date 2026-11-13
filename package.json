@@ -1,6 +1,6 @@
 {
   "name": "polyframes",
-  "version": "2.3.1",
+  "version": "2.4.0",
   "description": "kine's polybar window frames for herbstluftwm - native binary via bunx.",
   "type": "module",
   "bin": {
@@ -16,7 +16,7 @@
     "@bunli/core": "^0.8.2",
     "herbstutil": "^0.3.1",
     "zod": "^4",
-    "herbctl": "github:akinevz2/herbctl"
+    "herbctl": "1.7.0"
   },
   "devDependencies": {
     "@oven/bun-linux-x64": "^1.4.4",

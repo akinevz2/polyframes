@@ -15,9 +15,28 @@ import { labelOffsetPx } from "./barlabel";
 // The shared imperatives now live in herbstutil (v0.2.0 nav module) —
 // behavior-identical ports of the same compositions, single source of
 // truth (herbstutil holds the 5s-timeout/fail-soft herbstclient layer).
-import { floatCenterFrame, minimizeKeepFrame } from "herbctl/src/lib/imperatives.js";
+import { centerWindowInOwnFrame } from "herbctl/src/lib/geometry.js";
+import { minimizeKeepFrame } from "herbctl/src/lib/imperatives.js";
+import { layerMods, withLayerMods } from "herbctl/src/lib/layers.js";
 
 export { removeEmptyFrame } from "herbctl/src/lib/imperatives.js";
+
+/**
+ * floatCenterFrame — the float + center-to-own-frame composition
+ * (herbctl v1.7.0 folded it away: the layer state moved into the verb
+ * modifiers). Rebuilt here from the herbctl building blocks: the
+ * --to-float pre-layer write + centerWindowInOwnFrame under ONE lock.
+ * The vacated frame is deliberately LEFT in place even when this was
+ * its only client — the window centers within the frame's content
+ * geometry (hc_center's frame mode), not the monitor.
+ */
+function floatCenterFrame(wid: string): Promise<void> {
+    return withLayerMods(
+        wid,
+        layerMods({ "to-float": true }),
+        () => centerWindowInOwnFrame(wid),
+    );
+}
 
 const execFileP = promisify(execFile);
 

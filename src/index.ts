@@ -29,12 +29,6 @@ import { default as windowsCommand } from "./commands/windows";
 import { default as launchCommand } from "./commands/launch";
 import { default as switcherMenuCommand } from "./commands/switcher-menu";
 import { default as windowMenuCommand } from "./commands/window-menu";
-import { default as tileCommand } from "./commands/tile";
-import { default as centerCommand } from "./commands/center";
-import { default as spawnCommand } from "./commands/spawn";
-import { default as fitCommand } from "./commands/fit";
-import { default as cornerCommand } from "./commands/corner";
-import { default as resizeCommand } from "./commands/resize";
 
 async function main(): Promise<void> {
     const argv = process.argv.slice(2);
@@ -91,12 +85,6 @@ async function main(): Promise<void> {
     cli.command(launchCommand);
     cli.command(switcherMenuCommand);
     cli.command(windowMenuCommand);
-    cli.command(tileCommand);
-    cli.command(centerCommand);
-    cli.command(spawnCommand);
-    cli.command(fitCommand);
-    cli.command(cornerCommand);
-    cli.command(resizeCommand);
 
     await cli.run();
 }

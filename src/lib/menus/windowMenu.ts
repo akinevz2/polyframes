@@ -22,7 +22,7 @@
 
 import * as hc from "../hc";
 import { ui } from "../debug";
-import { tile } from "../tile";
+import { tile } from "herbctl/src/lib/tile.js";
 import { runRofiDmenu } from "./rofi";
 
 const BIN_DIR = `${process.env.HOME}/.local/bin`;
