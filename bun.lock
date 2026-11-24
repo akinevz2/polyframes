@@ -226,7 +226,7 @@
 
     "gifwrap": ["gifwrap@0.10.1", "", { "dependencies": { "image-q": "^4.0.0", "omggif": "^1.0.10" } }, "sha512-2760b1vpJHNmLzZ/ubTtNnEx5WApN/PYWJvXvgS+tL1egTTthayFYIQQNi136FLEDcN/IyEY2EcGpIITD6eYUw=="],
 
-    "herbctl": ["herbctl@github:akinevz2/herbctl#f835c8c", { "dependencies": { "@bunli/core": "latest", "herbstutil": "github:akinevz2/herbstutil#main" }, "bin": { "herbctl": "src/index.ts" } }, "akinevz2-herbctl-f835c8c", "sha512-kme59SaTw3TsudoT7jKsW6j25s3Ptgous07nIViIJSLrHo5pbeHJJo0s/dKH5TwexUfTG+xUFidOA88j9JJOBw=="],
+    "herbctl": ["herbctl@github:akinevz2/herbctl#e263d6e", { "dependencies": { "@bunli/core": "latest", "herbstutil": "github:akinevz2/herbstutil#main" }, "bin": { "herbctl": "src/index.ts" } }, "akinevz2-herbctl-e263d6e", "sha512-s5bdKzNDvJTYqpITXBUqZXNJvqPdxZhhCO/KQxuYYTgqPr0XMrCLq3kVjpeUiATbMFCJNrH2zbo/tG6dHB9ukg=="],
 
     "herbstutil": ["herbstutil@github:akinevz2/herbstutil#bb3efa8", { "dependencies": { "@bunli/core": "latest" }, "bin": { "herbstutil": "src/index.ts" } }, "akinevz2-herbstutil-bb3efa8", "sha512-oSHotnvuq/9R7+SmBGPI7gJzhIZOsP6DI9Q7jpySS1z2HEymNHaFdADkGq3yjXxBjvjeQkgk/S10jZrtPhutLA=="],
 
