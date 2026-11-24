@@ -26,7 +26,6 @@ import menuCommand from "./commands/menu";
 import { default as tagsCommand } from "./commands/tags";
 import { default as hiddenCommand } from "./commands/hidden";
 import { default as windowsCommand } from "./commands/windows";
-import { default as launchCommand } from "./commands/launch";
 import { default as switcherMenuCommand } from "./commands/switcher-menu";
 import { default as windowMenuCommand } from "./commands/window-menu";
 
@@ -82,7 +81,6 @@ async function main(): Promise<void> {
     cli.command(tagsCommand);
     cli.command(hiddenCommand);
     cli.command(windowsCommand);
-    cli.command(launchCommand);
     cli.command(switcherMenuCommand);
     cli.command(windowMenuCommand);
 
