@@ -162,10 +162,10 @@ describe("renderer contract", () => {
     test("empty desktop: the static click map — five uniform actions", () => {
         const bar = render([], ONCLICK);
         const self = "polyframes";
-        // left = hidden, right = launch, middle = launch,
-        // scroll up = tags, scroll down = tags
+        // left = the hidden picker (migrated to herbctl), right = launch,
+        // middle = launch, scroll up = tags, scroll down = tags
         expect(bar).toBe(
-            `%{A1:${self} hidden:}%{A2:${self} launch:}%{A3:${self} launch:}`
+            `%{A1:${process.env.HOME}/.local/bin/herbctl hidden:}%{A2:${self} launch:}%{A3:${self} launch:}`
             + `%{A4:${self} tags:}%{A5:${self} tags:}`
             + `Desktop%{A}%{A}%{A}%{A}%{A}`,
         );

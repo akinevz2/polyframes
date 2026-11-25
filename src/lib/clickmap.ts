@@ -156,7 +156,10 @@ export const defaultClickMap: ClickMap = new ClickMap()
  * Five bindings → five openers/closers, uniform with the default map.
  */
 export const emptyDesktopClickMap: ClickMap = new ClickMap()
-    .associate(lmbClick, "A1", "hidden", (_g, self) => `${self} hidden`)
+    // A1 = the hidden picker — migrated to herbctl (`herbctl hidden`);
+    // the ABSOLUTE path: polybar's action env has no ~/.local/bin PATH
+    // (the same reason the self action carries the resolved binary).
+    .associate(lmbClick, "A1", "hidden", (_g, _self) => `${process.env.HOME}/.local/bin/herbctl hidden`)
     .associate(rmbClick, "A2", "launch", (_g, self) => `${self} launch`)
     .associate(mmbClick, "A3", "launch", (_g, self) => `${self} launch`)
     .associate(scrollUp, "A4", "tags", (_g, self) => `${self} tags`)
